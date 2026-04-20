@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16
+    container_name: careerbridgeai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: careerbridge
+      POSTGRES_USER: careerbridge
+      POSTGRES_PASSWORD: careerbridge
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U careerbridge -d careerbridge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./apps/api
+    container_name: careerbridgeai-api
+    restart: unless-stopped
+    env_file:
+      - ./apps/api/.env.docker
+    environment:
+      DATABASE_URL: postgresql+psycopg2://careerbridge:careerbridge@db:5432/careerbridge
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./apps/web
+    container_name: careerbridgeai-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
