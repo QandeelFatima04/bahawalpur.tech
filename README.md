@@ -1,3 +1,4 @@
+HEAD
 # CareerBridge AI MVP
 
 Monorepo implementation:
@@ -119,3 +120,6 @@ SMTP_PASSWORD=your-app-password
 SMTP_FROM=CareerBridge AI <no-reply@yourdomain.com>
 SMTP_USE_TLS=true
 ```
+
+# bahawalpur.tech
+e35ab2bfd0da2b44433b091aecaca435a844fae9
