@@ -46,13 +46,13 @@ function Hero() {
           CareerBridge AI
         </p>
         <h1 className="display-hero text-white">
-          Graduates. Matched.
+          Where graduates meet
           <br />
-          Hiring, reimagined.
+          the right first job.
         </h1>
         <p className="mx-auto mt-6 max-w-[680px] text-[21px] font-normal leading-[1.38] tracking-[0.011em] text-white/80">
-          Turn every resume into a structured profile, score each candidate against every open role,
-          and run the entire interview flow in one place.
+          CareerBridge uses AI to match students with companies based on real skills &mdash; so
+          students apply only where they fit, and companies hire from a pre-ranked shortlist.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-5">
           <Link
@@ -65,7 +65,7 @@ function Hero() {
             href="/auth?mode=register&role=company"
             className="pill-link on-dark text-[17px]"
           >
-            I&rsquo;m hiring <ArrowRight size={16} />
+            I&rsquo;m hiring graduates <ArrowRight size={16} />
           </Link>
         </div>
         <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
@@ -80,6 +80,9 @@ function Hero() {
             </Button>
           </Link>
         </div>
+        <p className="mt-6 text-[13px] tracking-[-0.01em] text-white/55">
+          Free for students. Trusted by verified companies hiring early-career talent.
+        </p>
       </div>
 
       {/* Soft radial spotlight to evoke Apple's studio lighting */}
