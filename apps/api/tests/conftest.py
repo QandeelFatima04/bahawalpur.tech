@@ -18,5 +18,11 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
 
 from app.database import Base, engine  # noqa: E402
 from app import models  # noqa: E402,F401
+from app import main as _main  # noqa: E402
+
+# TestClient uses a single client host ("testclient") for every request, so the global
+# IP rate limit in app.main would throttle the suite once total requests cross 120/min.
+# Bump it for tests; the production value is unchanged.
+_main.RATE_LIMIT = 100_000
 
 Base.metadata.create_all(bind=engine)

@@ -97,7 +97,7 @@ function ChipInput({ value, onChange, placeholder }) {
   );
 }
 
-function JobForm({ initial, onSubmit, onCancel }) {
+function JobForm({ initial, onSubmit, onCancel, onToast }) {
   const [form, setForm] = useState({
     title: initial?.title || "",
     required_skills: initial?.required_skills || [],
@@ -108,7 +108,90 @@ function JobForm({ initial, onSubmit, onCancel }) {
     apply_threshold: initial?.apply_threshold ?? 60,
     hiring_limit: initial?.hiring_limit ?? "",
     status: initial?.status || "active",
+    extra: initial?.extra || null,
   });
+  const [roleDraft, setRoleDraft] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  // Compose a Markdown description from the AI draft so the Description textarea remains
+  // human-editable. The structured fields stay in `extra` for filtering / future UI.
+  const composeDescription = (draft) => {
+    const lines = [];
+    if (draft.job_summary) lines.push(draft.job_summary, "");
+    if (draft.key_responsibilities?.length) {
+      lines.push("**Responsibilities**");
+      draft.key_responsibilities.forEach((r) => lines.push(`- ${r}`));
+      lines.push("");
+    }
+    if (draft.preferred_skills?.length) {
+      lines.push("**Preferred skills**");
+      lines.push(draft.preferred_skills.join(", "));
+      lines.push("");
+    }
+    if (draft.benefits?.length) {
+      lines.push("**Benefits**");
+      draft.benefits.forEach((b) => lines.push(`- ${b}`));
+      lines.push("");
+    }
+    if (draft.career_growth_path) {
+      lines.push("**Career growth**");
+      lines.push(draft.career_growth_path);
+      lines.push("");
+    }
+    if (draft.interview_process?.length) {
+      lines.push("**Interview process**");
+      draft.interview_process.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    }
+    return lines.join("\n").trim();
+  };
+
+  const generate = async () => {
+    const role = roleDraft.trim();
+    if (!role) {
+      onToast?.("Enter a job role name first (e.g. 'Software Engineer').");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const draft = await api("/companies/jobs/generate", {
+        method: "POST",
+        body: JSON.stringify({ role_name: role }),
+      });
+      setForm((f) => ({
+        ...f,
+        title: draft.title || f.title,
+        required_skills: draft.required_skills || [],
+        experience_level: draft.experience_level || f.experience_level,
+        education_requirement: draft.education_requirement || f.education_requirement,
+        location: draft.location || f.location,
+        description: composeDescription(draft),
+        extra: {
+          job_summary: draft.job_summary,
+          key_responsibilities: draft.key_responsibilities,
+          preferred_skills: draft.preferred_skills,
+          required_experience_years: draft.required_experience_years,
+          employment_type: draft.employment_type,
+          work_mode: draft.work_mode,
+          salary_range: draft.salary_range,
+          benefits: draft.benefits,
+          career_growth_path: draft.career_growth_path,
+          department: draft.department,
+          seniority_level: draft.seniority_level,
+          interview_process: draft.interview_process,
+          tags: draft.tags,
+        },
+      }));
+      onToast?.(
+        draft.used_fallback
+          ? "AI is unavailable — drafted a starter template. Edit before saving."
+          : "Drafted with AI. Review and edit before saving."
+      );
+    } catch (err) {
+      onToast?.(friendlyError(err));
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const save = (e) => {
     e.preventDefault();
@@ -125,6 +208,35 @@ function JobForm({ initial, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={save} className="space-y-3">
+      <div className="rounded-md border border-dashed border-accent/40 bg-accent/5 p-3">
+        <Label className="flex items-center gap-2">
+          <span>Draft with AI</span>
+          <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent">
+            Beta
+          </span>
+        </Label>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Enter a role name and we'll pre-fill every field. You can edit anything before saving.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={roleDraft}
+            onChange={(e) => setRoleDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (!generating) generate();
+              }
+            }}
+            placeholder="e.g. Software Engineer, UI/UX Designer, Data Analyst"
+            maxLength={100}
+            disabled={generating}
+          />
+          <Button type="button" onClick={generate} disabled={generating || !roleDraft.trim()}>
+            {generating ? "Drafting…" : form.title ? "Regenerate" : "Generate"}
+          </Button>
+        </div>
+      </div>
       <div>
         <Label>Job title</Label>
         <Input required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
@@ -287,7 +399,7 @@ function JobsTab({ onToast }) {
             <DialogHeader>
               <DialogTitle>Post a new job</DialogTitle>
             </DialogHeader>
-            <JobForm onSubmit={create} onCancel={() => setCreating(false)} />
+            <JobForm onSubmit={create} onCancel={() => setCreating(false)} onToast={onToast} />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -406,7 +518,7 @@ function JobsTab({ onToast }) {
           <DialogHeader>
             <DialogTitle>Edit job</DialogTitle>
           </DialogHeader>
-          {editing && <JobForm initial={editing} onSubmit={save} onCancel={() => setEditing(null)} />}
+          {editing && <JobForm initial={editing} onSubmit={save} onCancel={() => setEditing(null)} onToast={onToast} />}
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(deleting)} onOpenChange={(v) => !v && !deleteBusy && setDeleting(null)}>

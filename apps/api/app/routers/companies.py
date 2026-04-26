@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, func
@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..deps import require_role
 from ..models import (
+    AiGenerationLog,
     Application,
     ApplicationStatus,
     CandidateProfile,
@@ -39,11 +40,14 @@ from ..schemas import (
     InterviewCreate,
     InterviewResponse,
     JobCreateRequest,
+    JobDraftRequest,
+    JobDraftResponse,
     JobResponse,
     JobUpdateRequest,
     ShortlistRequest,
 )
 from ..services import email as email_service
+from ..services.ai import generate_job_description
 from ..services.matching import recompute_for_job
 
 router = APIRouter(prefix="/companies", tags=["companies"])
@@ -109,7 +113,14 @@ def _job_to_response(db: Session, job: Job) -> JobResponse:
         hiring_limit=job.hiring_limit,
         hires_count=_hires_count(db, job.id),
         applicant_count=applicants,
+        extra=job.extra,
     )
+
+
+# Per-company quota for AI drafts. Generous enough that real authoring won't hit it, tight enough
+# to cap cost if a company script-spams the endpoint.
+AI_DRAFT_HOURLY_LIMIT = 20
+AI_DRAFT_DAILY_LIMIT = 100
 
 
 @router.post("/jobs", response_model=JobResponse)
@@ -128,6 +139,7 @@ def create_job(
         description=payload.description,
         apply_threshold=payload.apply_threshold,
         hiring_limit=payload.hiring_limit,
+        extra=payload.extra,
     )
     db.add(job)
     db.flush()
@@ -137,6 +149,73 @@ def create_job(
     db.refresh(job)
     recompute_for_job(db, job.id)
     return _job_to_response(db, job)
+
+
+@router.post("/jobs/generate", response_model=JobDraftResponse)
+def generate_job_draft(
+    payload: JobDraftRequest,
+    user: User = Depends(require_role(UserRole.company)),
+    db: Session = Depends(get_db),
+):
+    """Return an AI-drafted job description. Does NOT persist a Job — the company still has to
+    POST /companies/jobs to publish. Rate-limited per company via ai_generation_logs."""
+    company = _require_approved_company(db, user.id)
+
+    now = datetime.utcnow()
+    hourly = (
+        db.query(func.count(AiGenerationLog.id))
+        .filter(
+            AiGenerationLog.company_id == company.id,
+            AiGenerationLog.created_at >= now - timedelta(hours=1),
+        )
+        .scalar()
+        or 0
+    )
+    if hourly >= AI_DRAFT_HOURLY_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many drafts in the last hour. Try again later.",
+        )
+    daily = (
+        db.query(func.count(AiGenerationLog.id))
+        .filter(
+            AiGenerationLog.company_id == company.id,
+            AiGenerationLog.created_at >= now - timedelta(days=1),
+        )
+        .scalar()
+        or 0
+    )
+    if daily >= AI_DRAFT_DAILY_LIMIT:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Daily draft limit reached. Try again tomorrow.",
+        )
+
+    result = generate_job_description(payload.role_name, payload.seniority_hint)
+
+    db.add(AiGenerationLog(
+        company_id=company.id,
+        role_name=payload.role_name[:120],
+        success=result["ok"],
+        used_fallback=result["used_fallback"],
+        tokens_used=result["tokens_used"],
+        error=result["error"],
+    ))
+    db.commit()
+
+    if not result["ok"]:
+        if result["error"] == "unrecognized_role":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="We couldn't recognize that role. Try something like 'Software Engineer'.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not generate a draft for that role.",
+        )
+
+    draft = result["draft"]
+    return JobDraftResponse(**draft, used_fallback=result["used_fallback"])
 
 
 @router.get("/jobs", response_model=list[JobResponse])
@@ -190,6 +269,8 @@ def update_job(
         for skill in sorted({s.strip() for s in payload.required_skills if s.strip()}):
             db.add(JobSkill(job_id=job.id, name=skill))
         skills_changed = True
+    if payload.extra is not None:
+        job.extra = payload.extra
 
     db.commit()
     db.refresh(job)

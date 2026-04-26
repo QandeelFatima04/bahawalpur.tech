@@ -148,6 +148,12 @@ class Job(Base):
         index=True,
     )
     hiring_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Bag of optional fields the AI generator (or user) can fill in:
+    # job_summary, key_responsibilities, preferred_skills, employment_type,
+    # work_mode, salary_range, benefits, career_growth_path, department,
+    # seniority_level, interview_process, tags. JSON keeps the schema flexible
+    # while still being queryable on PostgreSQL via JSONB operators.
+    extra: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     company = relationship("Company", back_populates="jobs")
@@ -256,4 +262,18 @@ class AuditLog(Base):
     actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     action: Mapped[str] = mapped_column(String(255), index=True)
     payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class AiGenerationLog(Base):
+    """One row per AI job-description draft. Used for per-company rate limiting
+    and cost/audit visibility — never exposed to other companies."""
+    __tablename__ = "ai_generation_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
+    role_name: Mapped[str] = mapped_column(String(120))
+    success: Mapped[bool] = mapped_column(Boolean, default=True)
+    used_fallback: Mapped[bool] = mapped_column(Boolean, default=False)
+    tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)

@@ -91,6 +91,7 @@ class JobCreateRequest(BaseModel):
     description: str
     apply_threshold: float = Field(default=60.0, ge=0, le=100)
     hiring_limit: int | None = Field(default=None, ge=1, le=10000)
+    extra: dict | None = None
 
 
 class JobUpdateRequest(BaseModel):
@@ -104,6 +105,7 @@ class JobUpdateRequest(BaseModel):
     is_active: bool | None = None
     status: Literal["active", "paused", "inactive"] | None = None
     hiring_limit: int | None = Field(default=None, ge=0, le=10000)
+    extra: dict | None = None
 
 
 class JobResponse(BaseModel):
@@ -121,6 +123,37 @@ class JobResponse(BaseModel):
     hiring_limit: int | None
     hires_count: int
     applicant_count: int = 0
+    extra: dict | None = None
+
+
+class JobDraftRequest(BaseModel):
+    role_name: str = Field(min_length=2, max_length=100)
+    seniority_hint: Literal["entry", "junior", "mid", "senior", "lead"] | None = None
+
+
+class JobDraftResponse(BaseModel):
+    """AI-generated draft. Frontend pre-fills the create-job form with these fields; the user
+    edits and submits via POST /companies/jobs as usual. `used_fallback` lets the UI surface a
+    softer message when the LLM was unavailable."""
+    title: str
+    job_summary: str
+    key_responsibilities: list[str]
+    required_skills: list[str]
+    preferred_skills: list[str]
+    experience_level: str
+    required_experience_years: float
+    education_requirement: str
+    employment_type: str
+    work_mode: str
+    salary_range: str | None = None
+    location: str | None = None
+    benefits: list[str]
+    career_growth_path: str
+    department: str
+    seniority_level: str
+    interview_process: list[str]
+    tags: list[str]
+    used_fallback: bool = False
 
 
 class StudentJobRow(BaseModel):
