@@ -100,6 +100,8 @@ class CandidateProfile(Base):
     current_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     linkedin_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     github_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    leetcode_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    hackerrank_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     portfolio_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

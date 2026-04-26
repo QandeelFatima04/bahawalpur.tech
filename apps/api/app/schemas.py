@@ -45,6 +45,8 @@ class ProfileUpsertRequest(BaseModel):
     current_location: str | None = None
     linkedin_url: str | None = None
     github_url: str | None = None
+    leetcode_url: str | None = None
+    hackerrank_url: str | None = None
     portfolio_url: str | None = None
     skills: list[str] = Field(default_factory=list)
     projects: list[ProjectIn] = Field(default_factory=list)
@@ -61,6 +63,8 @@ class ProfileResponse(BaseModel):
     current_location: str | None
     linkedin_url: str | None
     github_url: str | None
+    leetcode_url: str | None
+    hackerrank_url: str | None
     portfolio_url: str | None
     skills: list[str]
     projects: list[ProjectIn]
@@ -157,6 +161,10 @@ class ApplicantRow(BaseModel):
     graduation_year: int | None
     experience_years: float
     skills: list[str]
+    linkedin_url: str | None
+    github_url: str | None
+    leetcode_url: str | None
+    hackerrank_url: str | None
     status: Literal["applied", "withdrawn"]
     match_score_at_apply: float
     current_total_score: float

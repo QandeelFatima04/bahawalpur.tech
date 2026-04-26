@@ -77,6 +77,8 @@ def _to_response(profile: CandidateProfile) -> ProfileResponse:
         current_location=profile.current_location,
         linkedin_url=profile.linkedin_url,
         github_url=profile.github_url,
+        leetcode_url=profile.leetcode_url,
+        hackerrank_url=profile.hackerrank_url,
         portfolio_url=profile.portfolio_url,
         skills=[s.name for s in profile.skills],
         projects=[ProjectIn(title=p.title, technologies=p.technologies, description=p.description) for p in profile.projects],
@@ -105,6 +107,8 @@ def upsert_profile(
     profile.current_location = payload.current_location
     profile.linkedin_url = payload.linkedin_url
     profile.github_url = payload.github_url
+    profile.leetcode_url = payload.leetcode_url
+    profile.hackerrank_url = payload.hackerrank_url
     profile.portfolio_url = payload.portfolio_url
     profile.skills.clear()
     profile.projects.clear()

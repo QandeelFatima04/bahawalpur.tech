@@ -23,6 +23,31 @@ function ScoreBadge({ score }) {
   return <Badge variant={variant}>{Number(score).toFixed(0)}%</Badge>;
 }
 
+function ProfileLinks({ row }) {
+  const items = [
+    { label: "LinkedIn", url: row.linkedin_url },
+    { label: "GitHub", url: row.github_url },
+    { label: "LeetCode", url: row.leetcode_url },
+    { label: "HackerRank", url: row.hackerrank_url },
+  ].filter((i) => i.url);
+  if (items.length === 0) return <span className="text-xs text-muted-foreground">—</span>;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((i) => (
+        <a
+          key={i.label}
+          href={i.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-accent underline hover:no-underline"
+        >
+          {i.label}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function StatusBadge({ status }) {
   const map = {
     pending: "warn",
@@ -523,7 +548,7 @@ function ApplicantsTab({ onToast }) {
 
         <div className="mt-4">
           {loading ? (
-            <SkeletonTable rows={4} cols={6} />
+            <SkeletonTable rows={4} cols={7} />
           ) : (
             <Table>
               <THead>
@@ -532,6 +557,7 @@ function ApplicantsTab({ onToast }) {
                   <Th>Education</Th>
                   <Th>Experience</Th>
                   <Th>Skills</Th>
+                  <Th>Profiles</Th>
                   <Th>Score</Th>
                   <Th className="text-right">Actions</Th>
                 </Tr>
@@ -546,6 +572,7 @@ function ApplicantsTab({ onToast }) {
                     </Td>
                     <Td>{r.experience_years} yrs</Td>
                     <Td className="max-w-[200px] text-xs text-muted-foreground">{r.skills.join(", ")}</Td>
+                    <Td><ProfileLinks row={r} /></Td>
                     <Td>
                       <div className="flex flex-col items-start gap-1">
                         <ScoreBadge score={r.current_total_score} />
@@ -564,7 +591,7 @@ function ApplicantsTab({ onToast }) {
                   </Tr>
                 ))}
                 {rows.length === 0 && (
-                  <Tr><Td colSpan={6} className="py-6 text-center text-sm text-muted-foreground">No applicants match the filters.</Td></Tr>
+                  <Tr><Td colSpan={7} className="py-6 text-center text-sm text-muted-foreground">No applicants match the filters.</Td></Tr>
                 )}
               </TBody>
             </Table>

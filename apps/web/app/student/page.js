@@ -120,6 +120,8 @@ function ProfileTab({ profile, reload, onToast }) {
     current_location: "",
     linkedin_url: "",
     github_url: "",
+    leetcode_url: "",
+    hackerrank_url: "",
     portfolio_url: "",
     skills: [],
     projects: [],
@@ -137,6 +139,8 @@ function ProfileTab({ profile, reload, onToast }) {
       current_location: profile.current_location || "",
       linkedin_url: profile.linkedin_url || "",
       github_url: profile.github_url || "",
+      leetcode_url: profile.leetcode_url || "",
+      hackerrank_url: profile.hackerrank_url || "",
       portfolio_url: profile.portfolio_url || "",
       skills: profile.skills || [],
       projects: profile.projects || [],
@@ -155,6 +159,8 @@ function ProfileTab({ profile, reload, onToast }) {
           current_location: form.current_location.trim() || null,
           linkedin_url: form.linkedin_url.trim() || null,
           github_url: form.github_url.trim() || null,
+          leetcode_url: form.leetcode_url.trim() || null,
+          hackerrank_url: form.hackerrank_url.trim() || null,
           portfolio_url: form.portfolio_url.trim() || null,
         }),
       });
@@ -198,6 +204,8 @@ function ProfileTab({ profile, reload, onToast }) {
   const linkFields = [
     { key: "linkedin_url", label: "LinkedIn URL", placeholder: "https://linkedin.com/in/yourname" },
     { key: "github_url", label: "GitHub URL", placeholder: "https://github.com/yourname" },
+    { key: "leetcode_url", label: "LeetCode URL", placeholder: "https://leetcode.com/yourname" },
+    { key: "hackerrank_url", label: "HackerRank URL", placeholder: "https://hackerrank.com/yourname" },
     { key: "portfolio_url", label: "Portfolio / website", placeholder: "https://yourname.dev" },
   ];
 
