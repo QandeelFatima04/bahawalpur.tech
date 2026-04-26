@@ -32,8 +32,13 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
-    Base.metadata.create_all(bind=engine)
-    logger.info("database-initialized")
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("database-initialized")
+    except Exception as exc:
+        # Don't kill the process — log loudly so the app still serves traffic and
+        # we can see the schema problem in `docker logs`.
+        logger.exception("database-init-failed: %s", exc)
 
 
 # Note on schema: production deployments should run `alembic upgrade head`

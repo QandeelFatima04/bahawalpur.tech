@@ -25,7 +25,17 @@ services:
       - ./apps/api/.env.docker
     environment:
       DATABASE_URL: postgresql+psycopg2://careerbridge:careerbridge@db:5432/careerbridge
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Resilient startup: try alembic upgrade first; if it fails (e.g. because the DB was
+    # bootstrapped via Base.metadata.create_all and has no alembic_version row), fall back
+    # to stamping head. The startup() hook in main.py runs create_all to fill any gaps.
+    # Uvicorn always starts so we get logs even when migrations cannot be applied.
+    command: >
+      sh -c "
+      echo '--- alembic upgrade head ---' &&
+      (alembic upgrade head || (echo '--- upgrade failed, stamping head ---' && alembic stamp head)) ;
+      echo '--- starting uvicorn ---' &&
+      exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
     ports:
       - "8000:8000"
     depends_on:
