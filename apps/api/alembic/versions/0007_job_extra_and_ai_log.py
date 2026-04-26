@@ -30,8 +30,11 @@ def upgrade() -> None:
             sa.Column("id", sa.Integer(), primary_key=True),
             sa.Column("company_id", sa.Integer(), sa.ForeignKey("companies.id"), nullable=False),
             sa.Column("role_name", sa.String(length=120), nullable=False),
-            sa.Column("success", sa.Boolean(), nullable=False, server_default=sa.text("1")),
-            sa.Column("used_fallback", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+            # Use sa.true()/sa.false() so the default emits as TRUE/FALSE on
+            # PostgreSQL and 1/0 on SQLite. sa.text("1") fails on PostgreSQL with
+            # "column is of type boolean but default expression is of type integer".
+            sa.Column("success", sa.Boolean(), nullable=False, server_default=sa.true()),
+            sa.Column("used_fallback", sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column("tokens_used", sa.Integer(), nullable=True),
             sa.Column("error", sa.String(length=500), nullable=True),
             sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
