@@ -33,11 +33,17 @@ services:
         condition: service_healthy
 
   web:
-    build: ./apps/web
+    build:
+      context: ./apps/web
+      args:
+        # Empty = browser hits same origin; Next.js rewrites proxy to the api container.
+        # Override to a public API URL (e.g. https://api.bahawalpur.tech) only if you have
+        # the API exposed on its own subdomain.
+        NEXT_PUBLIC_API_BASE: ""
     container_name: careerbridgeai-web
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_BASE: http://localhost:8000
+      API_INTERNAL_URL: http://api:8000
     ports:
       - "3000:3000"
     depends_on:

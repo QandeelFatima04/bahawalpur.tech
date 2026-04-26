@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+// Empty default = same-origin requests, proxied to the API container by Next.js rewrites
+// (see next.config.mjs). Override with NEXT_PUBLIC_API_BASE for local dev outside docker.
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
 const TOKEN_KEY = "cb_token";
 const REFRESH_KEY = "cb_refresh";
@@ -70,7 +72,16 @@ async function doFetch(path, options, token) {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
-  return fetch(`${API_BASE}${path}`, { ...options, headers, cache: "no-store" });
+  const url = `${API_BASE}${path}`;
+  const method = (options.method || "GET").toUpperCase();
+  if (process.env.NODE_ENV !== "production") {
+    console.debug(`[api] -> ${method} ${url}`);
+  }
+  const response = await fetch(url, { ...options, headers, cache: "no-store" });
+  if (process.env.NODE_ENV !== "production") {
+    console.debug(`[api] <- ${response.status} ${method} ${url}`);
+  }
+  return response;
 }
 
 export async function api(path, options = {}) {
@@ -87,11 +98,18 @@ export async function api(path, options = {}) {
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const err = new Error(
-      typeof body.detail === "string"
-        ? body.detail
-        : body.detail?.message || "Request failed"
-    );
+    const method = (options.method || "GET").toUpperCase();
+    const url = `${API_BASE}${path}`;
+    console.error(`[api] ${response.status} ${method} ${url}`, body);
+    let message;
+    if (response.status === 405) {
+      message = `Server rejected ${method} ${path} (405). Check that the API container is reachable and the route accepts ${method}.`;
+    } else if (typeof body.detail === "string") {
+      message = body.detail;
+    } else {
+      message = body.detail?.message || `Request failed (${response.status})`;
+    }
+    const err = new Error(message);
     err.status = response.status;
     err.body = body;
     throw err;

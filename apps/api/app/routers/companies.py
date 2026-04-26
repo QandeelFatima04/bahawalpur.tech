@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger("careerbridge")
 
 from ..database import get_db
 from ..deps import require_role
@@ -191,7 +194,15 @@ def generate_job_draft(
             detail="Daily draft limit reached. Try again tomorrow.",
         )
 
+    logger.info(
+        "ai-job-draft start company_id=%s role=%r seniority=%r",
+        company.id, payload.role_name, payload.seniority_hint,
+    )
     result = generate_job_description(payload.role_name, payload.seniority_hint)
+    logger.info(
+        "ai-job-draft done company_id=%s ok=%s used_fallback=%s error=%s tokens=%s",
+        company.id, result["ok"], result["used_fallback"], result["error"], result["tokens_used"],
+    )
 
     db.add(AiGenerationLog(
         company_id=company.id,
