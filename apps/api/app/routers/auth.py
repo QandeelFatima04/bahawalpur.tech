@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,6 +9,7 @@ from ..models import Company, User, UserRole
 from ..schemas import LoginRequest, PasswordResetRequest, RefreshRequest, RegisterRequest, TokenResponse
 from ..security import create_token, hash_password, verify_password, decode_token
 
+logger = logging.getLogger("careerbridge")
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
 
@@ -47,10 +50,39 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email).first()
-    if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    return _issue_tokens(user)
+    try:
+        user = db.query(User).filter(User.email == payload.email).first()
+        if not user:
+            logger.info("login-miss email=%s reason=user_not_found", payload.email)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        try:
+            ok = verify_password(payload.password, user.password_hash)
+        except Exception as exc:
+            logger.exception("login-verify-failed email=%s hash_prefix=%r exc=%s",
+                             payload.email, (user.password_hash or "")[:6], exc)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Password verification failed: {type(exc).__name__}: {exc}",
+            )
+        if not ok:
+            logger.info("login-miss email=%s reason=bad_password", payload.email)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        try:
+            return _issue_tokens(user)
+        except Exception as exc:
+            logger.exception("login-token-failed email=%s exc=%s", payload.email, exc)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Token issue failed: {type(exc).__name__}: {exc}",
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("login-unexpected email=%s exc=%s", payload.email, exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed: {type(exc).__name__}: {exc}",
+        )
 
 
 @router.post("/refresh", response_model=TokenResponse)
