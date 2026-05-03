@@ -1,0 +1,3 @@
+module.exports=[40816,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(58384);a.n(d("[project]/Desktop/Fyp claude/FYP v6/node_modules/next/dist/client/components/builtin/global-error.js <module evaluation>"))},32013,(a,b,c)=>{let{createClientModuleProxy:d}=a.r(58384);a.n(d("[project]/Desktop/Fyp claude/FYP v6/node_modules/next/dist/client/components/builtin/global-error.js"))},84427,a=>{"use strict";a.i(40816);var b=a.i(32013);a.n(b)},81696,a=>{a.n(a.i(84427))}];
+
+//# sourceMappingURL=0d0h_next_dist_client_components_builtin_global-error_0wp160_.js.map
