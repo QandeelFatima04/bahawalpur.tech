@@ -1,0 +1,165 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sk-focus-color: #0071e3;
+  --nav-height: 48px;
+}
+
+@layer base {
+  html,
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+      "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 17px;
+    letter-spacing: -0.374px;
+    line-height: 1.47;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
+    font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+      "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* Apple-style focus ring — used on all interactive elements */
+  :where(button, a, input, textarea, select, [role="tab"], [role="switch"]):focus-visible {
+    outline: 2px solid var(--sk-focus-color);
+    outline-offset: 2px;
+    border-radius: inherit;
+  }
+
+  /* Soften native controls */
+  select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='none' stroke='rgba(0,0,0,0.48)' stroke-width='1.5' d='M1 1l4 4 4-4'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  ::selection {
+    background: rgba(0, 113, 227, 0.18);
+    color: #1d1d1f;
+  }
+}
+
+@layer components {
+  /* Card — soft elevation on a neutral canvas, no border */
+  .card {
+    @apply rounded-xl bg-card p-6;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+  }
+
+  .card-elevated {
+    @apply rounded-xl bg-card p-6 shadow-card;
+  }
+
+  /* Input base — rounded-11 pillowy field */
+  .input-base {
+    @apply block w-full rounded-md border border-border bg-card px-4 text-[17px] text-foreground transition-colors;
+    height: 44px;
+    letter-spacing: -0.022em;
+    outline: none;
+  }
+  .input-base::placeholder {
+    color: rgba(0, 0, 0, 0.48);
+  }
+  .input-base:hover {
+    border-color: rgba(0, 0, 0, 0.18);
+  }
+  .input-base:focus {
+    outline: 2px solid var(--sk-focus-color);
+    outline-offset: 2px;
+    border-color: transparent;
+  }
+  .input-base:disabled {
+    @apply cursor-not-allowed bg-muted/60 text-muted-foreground;
+  }
+
+  textarea.input-base {
+    height: auto;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  /* Badge base — pill-shaped, tight tracking */
+  .badge-base {
+    @apply inline-flex items-center gap-1 rounded-pill px-2.5 py-0.5;
+    font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.33;
+    letter-spacing: -0.12px;
+  }
+
+  /* Translucent dark navigation glass */
+  .nav-glass {
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  /* Section anchor — cinematic full-bleed with centered content */
+  .section {
+    @apply w-full px-6 py-20 md:py-28;
+  }
+  .section-inner {
+    @apply mx-auto w-full max-w-[980px];
+  }
+
+  /* Apple "chevron" pill link */
+  .pill-link {
+    @apply inline-flex items-center gap-1 text-[17px] transition-colors;
+    color: #0066cc;
+  }
+  .pill-link:hover {
+    text-decoration: underline;
+  }
+  .pill-link.on-dark {
+    color: #2997ff;
+  }
+
+  /* Tight display heading */
+  .display-hero {
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+    font-size: clamp(40px, 6vw, 56px);
+    line-height: 1.07;
+    letter-spacing: -0.28px;
+  }
+  .display-section {
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 600;
+    font-size: clamp(30px, 4vw, 40px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .display-tile {
+    font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 500;
+    font-size: 28px;
+    line-height: 1.14;
+    letter-spacing: 0.007em;
+  }
+}
+
+/* Chrome autofill — keep Apple look on authed forms */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #1d1d1f !important;
+  caret-color: #1d1d1f;
+  transition: background-color 9999s ease-out;
+}
