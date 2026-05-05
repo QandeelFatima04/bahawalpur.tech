@@ -27,6 +27,12 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
 
     role = UserRole(payload.role)
+    # Defence in depth: even if the schema is bypassed, never allow self-registration as admin.
+    if role == UserRole.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin accounts cannot be self-registered.",
+        )
     user = User(email=payload.email, password_hash=hash_password(payload.password), role=role)
     db.add(user)
     try:

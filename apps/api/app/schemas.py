@@ -13,7 +13,9 @@ class TokenResponse(BaseModel):
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
-    role: Literal["student", "company", "admin"]
+    # Public self-registration is limited to student / company. Admin accounts must be created
+    # via a database seed or by another admin — never via this endpoint.
+    role: Literal["student", "company"]
     company_name: str | None = None
 
 
