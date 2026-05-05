@@ -48,6 +48,15 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)
+
+
 class ProjectIn(BaseModel):
     title: str
     technologies: list[str] = Field(default_factory=list)

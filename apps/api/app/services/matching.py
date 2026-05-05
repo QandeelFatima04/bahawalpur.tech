@@ -3,19 +3,16 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from ..models import CandidateProfile, Job, Match
-
-
-def _normalize(items: list[str]) -> set[str]:
-    return {i.strip().lower() for i in items if i and i.strip()}
+from .skills import normalize_skills
 
 
 def _score(candidate: CandidateProfile, job: Job) -> dict:
-    candidate_skills = _normalize([s.name for s in candidate.skills])
-    job_skills = _normalize([s.name for s in job.skills])
+    candidate_skills = normalize_skills([s.name for s in candidate.skills])
+    job_skills = normalize_skills([s.name for s in job.skills])
     overlap = len(candidate_skills.intersection(job_skills))
     skill_score = (overlap / max(len(job_skills), 1)) * 100
 
-    project_tech = _normalize([tech for p in candidate.projects for tech in (p.technologies or [])])
+    project_tech = normalize_skills([tech for p in candidate.projects for tech in (p.technologies or [])])
     project_overlap = len(project_tech.intersection(job_skills))
     project_score = (project_overlap / max(len(job_skills), 1)) * 100
 

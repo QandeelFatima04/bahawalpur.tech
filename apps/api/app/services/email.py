@@ -24,7 +24,12 @@ def _build_body(lines: Iterable[str]) -> str:
     return "\n".join(lines)
 
 
-def send_email(to: str | None, subject: str, body_lines: Iterable[str]) -> None:
+def send_email(
+    to: str | None,
+    subject: str,
+    body_lines: Iterable[str],
+    html_body: str | None = None,
+) -> None:
     if not to:
         logger.debug("send_email skipped: no recipient")
         return
@@ -45,6 +50,8 @@ def send_email(to: str | None, subject: str, body_lines: Iterable[str]) -> None:
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
+    if html_body:
+        msg.add_alternative(html_body, subtype="html")
 
     try:
         with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
@@ -230,6 +237,37 @@ def interview_reminder(
 def verify_email(to: str | None, token: str) -> None:
     """Send the email-verification link. Token TTL is enforced server-side (1 hour)."""
     link = f"{settings.app_web_base}/verify-email?token={token}"
+    html_body = f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f6f7f9;font-family:Arial,sans-serif;color:#111827;">
+    <div style="max-width:560px;margin:0 auto;padding:24px;">
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;">
+        <h1 style="font-size:22px;margin:0 0 12px;">Verify your CareerBridge AI account</h1>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+          Welcome to CareerBridge AI. Confirm your email address by clicking the button below
+          within <strong>1 hour</strong>.
+        </p>
+        <p style="margin:0 0 20px;">
+          <a href="{link}"
+             style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;
+                    padding:12px 24px;border-radius:8px;font-size:15px;font-weight:600;">
+            Verify Email
+          </a>
+        </p>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 8px;">
+          Or copy and paste this link into your browser:
+        </p>
+        <p style="font-size:13px;word-break:break-all;margin:0 0 24px;">
+          <a href="{link}" style="color:#111827;">{link}</a>
+        </p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px;" />
+        <p style="font-size:12px;color:#6b7280;margin:0;">
+          If you did not create this account, you can safely ignore this email.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>"""
     send_email(
         to,
         subject="Verify your CareerBridge AI account",
@@ -244,4 +282,58 @@ def verify_email(to: str | None, token: str) -> None:
             "",
             "— CareerBridge AI",
         ],
+        html_body=html_body,
+    )
+
+
+def forgot_password(to: str | None, token: str) -> None:
+    """Send a password-reset link. Token TTL is enforced server-side (30 minutes)."""
+    link = f"{settings.app_web_base}/reset-password?token={token}"
+    html_body = f"""<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f6f7f9;font-family:Arial,sans-serif;color:#111827;">
+    <div style="max-width:560px;margin:0 auto;padding:24px;">
+      <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;padding:32px;">
+        <h1 style="font-size:22px;margin:0 0 12px;">Reset your CareerBridge AI password</h1>
+        <p style="font-size:15px;line-height:1.6;margin:0 0 20px;">
+          We received a request to reset the password for your account. Click the button below
+          within <strong>30 minutes</strong> to set a new password.
+        </p>
+        <p style="margin:0 0 20px;">
+          <a href="{link}"
+             style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;
+                    padding:12px 24px;border-radius:8px;font-size:15px;font-weight:600;">
+            Reset Password
+          </a>
+        </p>
+        <p style="font-size:13px;color:#6b7280;margin:0 0 8px;">
+          Or copy and paste this link into your browser:
+        </p>
+        <p style="font-size:13px;word-break:break-all;margin:0 0 24px;">
+          <a href="{link}" style="color:#111827;">{link}</a>
+        </p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:0 0 16px;" />
+        <p style="font-size:12px;color:#6b7280;margin:0;">
+          If you did not request a password reset, you can safely ignore this email.
+          Your password will not change.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>"""
+    send_email(
+        to,
+        subject="Reset your CareerBridge AI password",
+        body_lines=[
+            "You requested a password reset for your CareerBridge AI account.",
+            "",
+            "Open the link below within 30 minutes to set a new password:",
+            "",
+            link,
+            "",
+            "If you did not request this, you can safely ignore this email.",
+            "",
+            "— CareerBridge AI",
+        ],
+        html_body=html_body,
     )

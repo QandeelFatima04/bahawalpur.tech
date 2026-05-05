@@ -41,6 +41,7 @@ from ..schemas import (
 from ..services import email as email_service
 from ..services.ai import generate_career_report, parse_resume
 from ..services.matching import recompute_for_job
+from ..services.skills import normalize_skill, normalize_skills
 from ..services.storage import upload_resume
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -143,6 +144,41 @@ def update_visibility(
 ):
     profile = _require_active_profile(db, user.id)
     profile.visibility_flag = payload.visibility_flag
+    db.commit()
+    db.refresh(profile)
+    for job in db.query(Job).filter(Job.is_active.is_(True)).all():
+        recompute_for_job(db, job.id)
+    return _to_response(profile)
+
+
+@router.delete("/me/profile", response_model=ProfileResponse)
+def clear_profile(
+    user: User = Depends(require_role(UserRole.student)),
+    db: Session = Depends(get_db),
+):
+    """Clear all resume-extracted fields back to empty.
+
+    The profile row itself is kept (preserves visibility_flag and other settings).
+    All skills and projects are deleted. Call this when the student wants to
+    re-upload a fresh CV.
+    """
+    profile = _require_active_profile(db, user.id)
+    profile.university = None
+    profile.degree = None
+    profile.graduation_year = None
+    profile.experience_years = 0
+    profile.summary = None
+    profile.current_location = None
+    profile.phone = None
+    profile.email = None
+    profile.address = None
+    profile.linkedin_url = None
+    profile.github_url = None
+    profile.leetcode_url = None
+    profile.hackerrank_url = None
+    profile.portfolio_url = None
+    profile.skills.clear()
+    profile.projects.clear()
     db.commit()
     db.refresh(profile)
     for job in db.query(Job).filter(Job.is_active.is_(True)).all():
@@ -333,7 +369,7 @@ def browse_jobs(
         .all()
     }
 
-    candidate_skills_lower = {s.name.strip().lower() for s in profile.skills}
+    candidate_skills_norm = normalize_skills([s.name for s in profile.skills])
 
     output: list[StudentJobRow] = []
     for job, company in rows:
@@ -344,7 +380,7 @@ def browse_jobs(
         total = m.total_score if m else 0.0
         if min_score is not None and total < min_score:
             continue
-        missing = [s for s in skill_names if s.strip().lower() not in candidate_skills_lower]
+        missing = [s for s in skill_names if normalize_skill(s) not in candidate_skills_norm]
         output.append(
             StudentJobRow(
                 id=job.id,

@@ -117,7 +117,7 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
     location: initial?.location || "",
     description: initial?.description || "",
     apply_threshold: initial?.apply_threshold ?? 60,
-    hiring_limit: initial?.hiring_limit ?? "",
+    hiring_limit: initial?.hiring_limit ?? (initial ? "" : 1),
     status: initial?.status || "active",
     extra: initial?.extra || null,
   });
@@ -247,6 +247,27 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
             {generating ? "Drafting…" : form.title ? "Regenerate" : "Generate"}
           </Button>
         </div>
+        {generating && (
+          <div className="mt-3">
+            <div className="mb-1 text-xs text-muted-foreground">Generating job description with AI…</div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-accent"
+                style={{
+                  animation: "ai-gen-progress 2s ease-in-out infinite",
+                  width: "40%",
+                }}
+              />
+            </div>
+            <style>{`
+              @keyframes ai-gen-progress {
+                0%   { transform: translateX(-100%); width: 40%; }
+                50%  { width: 60%; }
+                100% { transform: translateX(350%); width: 40%; }
+              }
+            `}</style>
+          </div>
+        )}
       </div>
       <div>
         <Label>Job title</Label>

@@ -222,7 +222,17 @@ function AuthPageInner() {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {!isRegister && (
+                  <Link
+                    href="/forgot-password"
+                    className="text-[12px] text-accent underline-offset-4 hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <Input
                 id="password"
                 type="password"
