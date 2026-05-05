@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -97,11 +98,21 @@ function ChipInput({ value, onChange, placeholder }) {
   );
 }
 
+// API supports entry/mid/senior/lead. The dropdown only exposes the first three; "lead" or
+// any unknown value coming back from the AI / API is collapsed to the closest supported one.
+const EXPERIENCE_LEVELS = ["entry", "mid", "senior"];
+function normalizeExperienceLevel(value) {
+  const v = (value || "").toLowerCase();
+  if (EXPERIENCE_LEVELS.includes(v)) return v;
+  if (v === "lead") return "senior";
+  return "entry";
+}
+
 function JobForm({ initial, onSubmit, onCancel, onToast }) {
   const [form, setForm] = useState({
     title: initial?.title || "",
     required_skills: initial?.required_skills || [],
-    experience_level: initial?.experience_level || "entry",
+    experience_level: normalizeExperienceLevel(initial?.experience_level),
     education_requirement: initial?.education_requirement || "Bachelor's in CS or related",
     location: initial?.location || "",
     description: initial?.description || "",
@@ -161,7 +172,7 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
         ...f,
         title: draft.title || f.title,
         required_skills: draft.required_skills || [],
-        experience_level: draft.experience_level || f.experience_level,
+        experience_level: normalizeExperienceLevel(draft.experience_level || f.experience_level),
         education_requirement: draft.education_requirement || f.education_requirement,
         location: draft.location || f.location,
         description: composeDescription(draft),
@@ -244,7 +255,14 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
       <div className="grid gap-3 md:grid-cols-2">
         <div>
           <Label>Experience level</Label>
-          <Input value={form.experience_level} onChange={(e) => setForm((f) => ({ ...f, experience_level: e.target.value }))} />
+          <Select
+            value={form.experience_level}
+            onChange={(e) => setForm((f) => ({ ...f, experience_level: e.target.value }))}
+          >
+            <option value="entry">Beginner level</option>
+            <option value="mid">Intermediate level</option>
+            <option value="senior">Senior level</option>
+          </Select>
         </div>
         <div>
           <Label>Location</Label>
