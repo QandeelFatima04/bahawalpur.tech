@@ -10,6 +10,22 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class RegisterResponse(BaseModel):
+    """Returned by /auth/register. We do NOT issue tokens here — the user must verify email
+    first, then log in normally. Frontend should route to a 'check your inbox' page."""
+    message: str
+    email: EmailStr
+    verification_required: bool = True
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=64)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)

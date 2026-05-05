@@ -177,3 +177,23 @@ def company_approved(company_email: str | None, company_name: str) -> None:
             "— CareerBridge AI",
         ],
     )
+
+
+def verify_email(to: str | None, token: str) -> None:
+    """Send the email-verification link. Token TTL is enforced server-side (1 hour)."""
+    link = f"{settings.app_web_base}/verify-email?token={token}"
+    send_email(
+        to,
+        subject="Verify your CareerBridge AI account",
+        body_lines=[
+            "Welcome to CareerBridge AI.",
+            "",
+            "Confirm this is your email address by opening the link below within 1 hour:",
+            "",
+            link,
+            "",
+            "If you did not sign up, you can safely ignore this message.",
+            "",
+            "— CareerBridge AI",
+        ],
+    )

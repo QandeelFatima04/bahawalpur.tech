@@ -68,6 +68,9 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+    email_verification_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    email_verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     candidate_profile = relationship("CandidateProfile", uselist=False, back_populates="user")
     company = relationship("Company", uselist=False, back_populates="user")
