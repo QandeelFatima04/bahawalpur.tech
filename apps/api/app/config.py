@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     smtp_from: str = "CareerBridge AI <no-reply@careerbridge.ai>"
     smtp_use_tls: bool = True
     app_web_base: str = "http://localhost:3000"
+    # Shared secret required in the X-Cron-Secret header for /internal/* endpoints.
+    # Set in apps/api/.env.docker; never committed.
+    internal_cron_secret: str | None = None
 
 
 @lru_cache

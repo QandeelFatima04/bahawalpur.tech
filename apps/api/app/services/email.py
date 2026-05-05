@@ -179,6 +179,54 @@ def company_approved(company_email: str | None, company_name: str) -> None:
     )
 
 
+def interview_reminder(
+    *,
+    student_email: str | None,
+    company_email: str | None,
+    student_name: str,
+    company_name: str,
+    job_title: str,
+    interview_date,
+    meeting_link: str,
+    horizon: str,
+) -> None:
+    """Send a reminder email with the meeting link to BOTH parties.
+    `horizon` is a human phrase like '24 hours' or '1 hour' that goes in the subject + body."""
+    when = f"{interview_date:%A, %d %B %Y at %H:%M UTC}"
+    send_email(
+        student_email,
+        subject=f"Reminder: interview with {company_name} in {horizon} — {job_title}",
+        body_lines=[
+            f"This is a reminder that your interview with {company_name} for the {job_title} role"
+            f" is in {horizon}.",
+            "",
+            f"When: {when}",
+            f"Join: {meeting_link}",
+            "",
+            "The Join meeting button is also available on your dashboard:",
+            f"  {settings.app_web_base}/student",
+            "",
+            "— CareerBridge AI",
+        ],
+    )
+    send_email(
+        company_email,
+        subject=f"Reminder: interview with {student_name} in {horizon} — {job_title}",
+        body_lines=[
+            f"This is a reminder that your interview with {student_name} for the {job_title} role"
+            f" is in {horizon}.",
+            "",
+            f"When: {when}",
+            f"Join: {meeting_link}",
+            "",
+            "The Join meeting button is also available on your dashboard:",
+            f"  {settings.app_web_base}/company",
+            "",
+            "— CareerBridge AI",
+        ],
+    )
+
+
 def verify_email(to: str | None, token: str) -> None:
     """Send the email-verification link. Token TTL is enforced server-side (1 hour)."""
     link = f"{settings.app_web_base}/verify-email?token={token}"

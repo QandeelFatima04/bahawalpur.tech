@@ -8,6 +8,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -232,6 +233,9 @@ class InterviewRequest(Base):
     interview_date: Mapped[datetime] = mapped_column(DateTime)
     hire_status: Mapped[HireStatus | None] = mapped_column(Enum(HireStatus), nullable=True)
     meeting_link: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    # Tracks which reminder emails have already been sent so the cron job doesn't double-fire.
+    # 0 = none yet, 1 = 24h reminder sent, 2 = 1h reminder sent (final).
+    reminder_stage: Mapped[int] = mapped_column(SmallInteger, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .database import Base, engine
-from .routers import admin, auth, companies, matches, students
+from .routers import admin, auth, companies, internal, matches, students
 
 settings = get_settings()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -77,3 +77,4 @@ app.include_router(students.router)
 app.include_router(companies.router)
 app.include_router(matches.router)
 app.include_router(admin.router)
+app.include_router(internal.router)
