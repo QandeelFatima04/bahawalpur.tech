@@ -9,12 +9,14 @@ from ..config import get_settings
 from ..database import get_db
 from ..models import Company, User, UserRole
 from ..schemas import (
+    ForgotPasswordRequest,
     LoginRequest,
     PasswordResetRequest,
     RefreshRequest,
     RegisterRequest,
     RegisterResponse,
     ResendVerificationRequest,
+    ResetPasswordRequest,
     TokenResponse,
     VerifyEmailRequest,
 )
@@ -31,6 +33,8 @@ EMAIL_VERIFICATION_TTL = timedelta(hours=1)
 # Throttle resend-verification: at most one email per minute, five per day per user.
 RESEND_MIN_INTERVAL = timedelta(minutes=1)
 RESEND_DAILY_LIMIT = 5
+# Password-reset token TTL.
+PASSWORD_RESET_TTL = timedelta(minutes=30)
 
 
 def _issue_tokens(user: User) -> TokenResponse:
@@ -231,3 +235,46 @@ def logout():
 @router.post("/password-reset")
 def password_reset(payload: PasswordResetRequest):
     return {"message": f"Password reset requested for {payload.email}"}
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    generic = {"message": "If that account exists, a password reset link has been sent."}
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user or not user.email_verified:
+        # Always return the same response to avoid user-enumeration.
+        return generic
+
+    user.password_reset_token = secrets.token_urlsafe(32)
+    user.password_reset_sent_at = datetime.utcnow()
+    db.commit()
+    try:
+        email_service.forgot_password(user.email, user.password_reset_token)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("forgot-password-send-failed user_id=%s exc=%s", user.id, exc)
+    return generic
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.password_reset_token == payload.token).first()
+    if not user or not user.password_reset_sent_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset link is invalid or has already been used.",
+        )
+    if datetime.utcnow() - user.password_reset_sent_at > PASSWORD_RESET_TTL:
+        # Clear the expired token so it can't be retried.
+        user.password_reset_token = None
+        user.password_reset_sent_at = None
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset link has expired. Please request a new one.",
+        )
+
+    user.password_hash = hash_password(payload.new_password)
+    user.password_reset_token = None
+    user.password_reset_sent_at = None
+    db.commit()
+    return {"message": "Password updated successfully. You can now log in."}

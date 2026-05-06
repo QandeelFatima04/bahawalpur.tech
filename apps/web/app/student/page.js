@@ -16,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, THead, TBody, Tr, Th, Td } from "@/components/ui/table";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { JoinMeetingButton } from "@/components/JoinMeetingButton";
-import { Upload, CheckCircle2, XCircle, Clock, Sparkles, Lock, EyeOff, CircleCheck, Circle } from "lucide-react";
+import { Upload, CheckCircle2, XCircle, Clock, Sparkles, Lock, EyeOff, CircleCheck, Circle, Pencil, Trash2 } from "lucide-react";
 
 function Chips({ items, onRemove, variant = "accent" }) {
   if (!items?.length) return <span className="text-xs text-muted-foreground">None yet</span>;
@@ -110,7 +110,7 @@ function EmptyState({ title, message, action }) {
   );
 }
 
-function ProfileTab({ profile, reload, onToast }) {
+function ProfileTab({ profile, reload, onToast, onDeleted }) {
   const [form, setForm] = useState({
     university: "",
     degree: "",
@@ -130,6 +130,7 @@ function ProfileTab({ profile, reload, onToast }) {
     projects: [],
   });
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -182,6 +183,21 @@ function ProfileTab({ profile, reload, onToast }) {
     }
   };
 
+  const deleteProfile = async () => {
+    if (!window.confirm("This will clear all your resume data (skills, projects, summary, etc.) so you can upload a new CV. Your visibility and account settings are kept. Continue?")) return;
+    setDeleting(true);
+    try {
+      await api("/students/me/profile", { method: "DELETE" });
+      onToast("Profile data cleared. You can now upload a new resume.");
+      await reload();
+      onDeleted?.();
+    } catch (err) {
+      onToast(friendlyError(err));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const toggleVisibility = async (flag) => {
     try {
       await api("/students/me/visibility", {
@@ -222,7 +238,10 @@ function ProfileTab({ profile, reload, onToast }) {
     <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
       <Card>
         <CardHeader>
-          <CardTitle>Basic details</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            Basic details
+            <Pencil size={14} className="text-muted-foreground" />
+          </CardTitle>
           <CardDescription>
             {isEmpty
               ? "Upload your resume on the Resume tab and we'll fill these in automatically with AI."
@@ -338,8 +357,17 @@ function ProfileTab({ profile, reload, onToast }) {
               ))}
             </div>
           </div>
-          <div className="mt-5 flex justify-end">
-            <Button onClick={save} disabled={saving}>
+          <div className="mt-5 flex items-center justify-between">
+            <Button
+              variant="outline"
+              onClick={deleteProfile}
+              disabled={deleting || saving}
+              className="gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/60"
+            >
+              <Trash2 size={14} />
+              {deleting ? "Deleting..." : "Delete profile"}
+            </Button>
+            <Button onClick={save} disabled={saving || deleting}>
               {saving ? "Saving..." : "Save profile"}
             </Button>
           </div>
@@ -458,10 +486,13 @@ function ParsedPreview({ profile }) {
   );
 }
 
-function ResumeTab({ onToast, reload, profile, onParsed }) {
+function ResumeTab({ onToast, reload, profile, onParsed, onGoToProfile }) {
   const inputRef = useRef(null);
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  const hasExtracted = status?.status === "completed" || (profile?.skills?.length > 0);
+  const isParsing = status?.status === "pending" || status?.status === "processing";
 
   const pollStatus = useCallback(
     async (resumeId) => {
@@ -517,18 +548,59 @@ function ResumeTab({ onToast, reload, profile, onParsed }) {
       <CardContent>
         <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={onPick} />
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => inputRef.current?.click()} disabled={busy} className="gap-2">
+          <Button
+            onClick={() => inputRef.current?.click()}
+            disabled={busy || hasExtracted}
+            className="gap-2"
+            title={hasExtracted ? "Delete your profile to upload a new resume" : undefined}
+          >
             <Upload size={16} />
             {busy ? "Processing..." : profile?.skills?.length ? "Upload a new resume" : "Choose file"}
           </Button>
+          {hasExtracted && !busy && (
+            <Button variant="outline" className="gap-2" onClick={onGoToProfile}>
+              <Pencil size={14} />
+              Edit profile
+            </Button>
+          )}
           {status && (
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Status:</span>
               <StatusBadge status={status.status} />
-              {status.status === "processing" && <span className="text-xs text-muted-foreground">Parsing with AI, this can take up to 30s</span>}
             </div>
           )}
         </div>
+
+        {isParsing && (
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Parsing with AI — this usually takes 15–30 seconds…</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-accent"
+                style={{
+                  animation: "resume-progress 2s ease-in-out infinite",
+                  width: "40%",
+                }}
+              />
+            </div>
+            <style>{`
+              @keyframes resume-progress {
+                0%   { transform: translateX(-100%); width: 40%; }
+                50%  { width: 60%; }
+                100% { transform: translateX(350%); width: 40%; }
+              }
+            `}</style>
+          </div>
+        )}
+
+        {hasExtracted && !busy && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Resume already extracted. To upload a new CV, delete your profile data first.
+          </p>
+        )}
+
         {status?.error && <p className="mt-2 text-sm text-destructive">{status.error}</p>}
 
         {(status?.status === "completed" || profile?.skills?.length > 0) && <ParsedPreview profile={profile} />}
@@ -1150,10 +1222,21 @@ function StudentDashboard() {
           <TabsTrigger value="interviews">Interviews</TabsTrigger>
         </TabsList>
         <TabsContent value="resume">
-          <ResumeTab onToast={setToast} reload={loadProfile} profile={profile} onParsed={onParsed} />
+          <ResumeTab
+            onToast={setToast}
+            reload={loadProfile}
+            profile={profile}
+            onParsed={onParsed}
+            onGoToProfile={() => setTab("profile")}
+          />
         </TabsContent>
         <TabsContent value="profile">
-          <ProfileTab profile={profile} reload={loadProfile} onToast={setToast} />
+          <ProfileTab
+            profile={profile}
+            reload={loadProfile}
+            onToast={setToast}
+            onDeleted={() => setTab("resume")}
+          />
         </TabsContent>
         <TabsContent value="report">
           <ReportTab profile={profile} />

@@ -72,6 +72,8 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
     email_verification_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     email_verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    password_reset_token: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    password_reset_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     candidate_profile = relationship("CandidateProfile", uselist=False, back_populates="user")
     company = relationship("Company", uselist=False, back_populates="user")
@@ -98,7 +100,7 @@ class CandidateProfile(Base):
     degree: Mapped[str | None] = mapped_column(String(255), nullable=True)
     graduation_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     experience_years: Mapped[float] = mapped_column(Float, default=0)
-    visibility_flag: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    visibility_flag: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     is_disabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     current_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
