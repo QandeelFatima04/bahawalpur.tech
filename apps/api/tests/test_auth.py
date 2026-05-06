@@ -23,7 +23,7 @@ def test_duplicate_registration_is_rejected():
     client = TestClient(app)
     email = unique_email("dup")
     r1 = client.post("/auth/register", json={"email": email, "password": "Password123!", "role": "student"})
-    assert r1.status_code == 200
+    assert r1.status_code == 201
     r2 = client.post("/auth/register", json={"email": email, "password": "Password123!", "role": "student"})
     assert r2.status_code == 409
 

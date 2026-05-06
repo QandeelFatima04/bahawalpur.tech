@@ -16,4 +16,6 @@ def test_weighted_matching_score():
     assert result["project_score"] == 50.0
     assert result["education_score"] == 100
     assert result["experience_score"] == 50.0
-    assert result["total_score"] == 62.5
+    # weights: skill 0.40, project 0.25, education 0.20, experience 0.15
+    # 50*0.40 + 50*0.25 + 100*0.20 + 50*0.15 = 60.0
+    assert result["total_score"] == 60.0

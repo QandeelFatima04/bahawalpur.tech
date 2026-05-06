@@ -126,7 +126,7 @@ def test_apply_requires_visibility():
     _, student_token = register(client, "student")
 
     job_id = _post_job(client, company_token, apply_threshold=0.0)
-    # Build a profile but do NOT turn visibility on
+    # Build a profile and explicitly turn visibility OFF (it now defaults to ON).
     client.put(
         "/students/me/profile",
         json={
@@ -136,6 +136,7 @@ def test_apply_requires_visibility():
         },
         headers=auth(student_token),
     )
+    client.patch("/students/me/visibility", json={"visibility_flag": False}, headers=auth(student_token))
     res = client.post(
         "/students/me/applications",
         json={"job_id": job_id},
