@@ -101,6 +101,21 @@ export async function api(path, options = {}) {
     const method = (options.method || "GET").toUpperCase();
     const url = `${API_BASE}${path}`;
     console.error(`[api] ${response.status} ${method} ${url}`, body);
+    // Admin disabled the account mid-session — drop tokens and signal the next page render
+    // so RequireRole bounces the user to /auth with the right banner.
+    if (response.status === 403 && body?.detail === "account_disabled") {
+      if (typeof window !== "undefined") {
+        try {
+          window.sessionStorage.setItem(
+            "cb_auth_message",
+            "Your account has been disabled. Please contact the administrator.",
+          );
+        } catch {
+          /* sessionStorage unavailable — banner will just be missing */
+        }
+      }
+      clearTokens();
+    }
     let message;
     if (response.status === 405) {
       message = `Server rejected ${method} ${path} (405). Check that the API container is reachable and the route accepts ${method}.`;
