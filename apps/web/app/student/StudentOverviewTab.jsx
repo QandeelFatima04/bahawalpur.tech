@@ -1,42 +1,37 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { KpiCard } from "@/components/dashboard/KpiCard";
-import { CircularProgress } from "@/components/dashboard/CircularProgress";
-import { PipelineDonut, TimelineLine } from "@/components/dashboard/Charts";
-import { SkillLearnLink } from "@/components/SkillLearnLink";
+import { HeroStatement } from "@/components/dashboard/HeroStatement";
+import { NextActionCard } from "@/components/dashboard/NextActionCard";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { RingProgress } from "@/components/dashboard/charts";
 import { JoinMeetingButton } from "@/components/JoinMeetingButton";
 import {
   STAGES,
-  STAGE_COLOR,
   STAGE_LABEL,
-  bucketByDate,
   derivePipelineStage,
 } from "@/lib/applicationPipeline";
 import {
   Activity,
   CalendarClock,
   CheckCircle2,
-  ChevronRight,
   FileText,
   Lightbulb,
+  Send,
   Sparkles,
   Target,
   Upload,
-  Users,
   XCircle,
 } from "lucide-react";
 
 const PROFILE_ITEMS = [
-  { key: "resume", label: "Resume parsed", test: (p) => Boolean(p?.skills?.length || p?.summary), tab: "resume" },
-  { key: "summary", label: "Professional summary", test: (p) => Boolean(p?.summary), tab: "profile" },
-  { key: "skills", label: "At least 5 skills", test: (p) => (p?.skills?.length || 0) >= 5, tab: "profile" },
+  { key: "resume", label: "CV parsed", test: (p) => Boolean(p?.skills?.length || p?.summary), tab: "resume" },
+  { key: "summary", label: "Summary written", test: (p) => Boolean(p?.summary), tab: "profile" },
+  { key: "skills", label: "5+ skills listed", test: (p) => (p?.skills?.length || 0) >= 5, tab: "profile" },
   { key: "education", label: "Education filled", test: (p) => Boolean(p?.university && p?.degree), tab: "profile" },
-  { key: "projects", label: "At least 1 project", test: (p) => (p?.projects?.length || 0) >= 1, tab: "profile" },
-  { key: "links", label: "LinkedIn / GitHub / portfolio link", test: (p) => Boolean(p?.linkedin_url || p?.github_url || p?.portfolio_url), tab: "profile" },
+  { key: "projects", label: "1+ project", test: (p) => (p?.projects?.length || 0) >= 1, tab: "profile" },
+  { key: "links", label: "LinkedIn / GitHub", test: (p) => Boolean(p?.linkedin_url || p?.github_url || p?.portfolio_url), tab: "profile" },
 ];
 
 function computeProfileCompletion(profile) {
@@ -46,58 +41,58 @@ function computeProfileCompletion(profile) {
   return { items, done, total: items.length, percent };
 }
 
-function aggregateMissingSkills(jobs) {
-  // Frequency-count missing skills across jobs the student is below threshold on.
-  const freq = new Map();
-  for (const job of jobs || []) {
-    if ((job.total_score || 0) >= (job.apply_threshold || 0)) continue;
-    for (const s of job.missing_skills || []) {
-      freq.set(s, (freq.get(s) || 0) + 1);
+function buildActivity({ pipeline, interviews }) {
+  const events = [];
+  for (const row of pipeline) {
+    if (row.created_at) {
+      events.push({
+        at: row.created_at,
+        text: `Applied to ${row.title || "a role"}`,
+        meta: row.company_name,
+        icon: Send,
+        tone: "accent",
+      });
     }
   }
-  return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([s]) => s);
-}
-
-function aggregateBestCategories(jobs) {
-  // Heuristic: split each title on whitespace, keep words >= 4 chars, count where match >= 50%.
-  const freq = new Map();
-  const STOPWORDS = new Set(["junior", "senior", "engineer", "developer", "intern", "lead", "specialist", "manager", "level", "entry"]);
-  for (const job of jobs || []) {
-    if ((job.total_score || 0) < 50) continue;
-    for (const word of String(job.title || "").toLowerCase().split(/\s+/)) {
-      if (word.length < 4 || STOPWORDS.has(word)) continue;
-      freq.set(word, (freq.get(word) || 0) + 1);
+  for (const it of interviews) {
+    if (it.status === "pending") {
+      events.push({
+        at: it.created_at || it.interview_date,
+        text: `${it.company_name} wants to interview you`,
+        meta: it.job_title,
+        icon: CalendarClock,
+        tone: "warn",
+      });
+    } else if (it.status === "accepted") {
+      events.push({
+        at: it.updated_at || it.created_at,
+        text: `Interview accepted with ${it.company_name}`,
+        meta: it.job_title,
+        icon: CheckCircle2,
+        tone: "success",
+      });
+    } else if (it.status === "rejected") {
+      events.push({
+        at: it.updated_at || it.created_at,
+        text: `Declined interview from ${it.company_name}`,
+        meta: it.job_title,
+        icon: XCircle,
+      });
+    }
+    if (it.hire_status === "hired") {
+      events.push({
+        at: it.updated_at,
+        text: `Hired by ${it.company_name}`,
+        meta: it.job_title,
+        icon: CheckCircle2,
+        tone: "success",
+      });
     }
   }
-  return [...freq.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([word]) => word[0].toUpperCase() + word.slice(1));
-}
-
-function NextAction({ icon, title, hint, cta, onClick, tone = "default" }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group flex w-full items-start gap-3 rounded-lg border border-black/[0.04] bg-card px-4 py-3 text-left transition-colors hover:border-accent/40 hover:bg-accent/[0.03]`}
-    >
-      <div
-        className={`mt-0.5 shrink-0 ${
-          tone === "warn" ? "text-warn" : tone === "destructive" ? "text-destructive" : "text-accent"
-        }`}
-      >
-        {icon}
-      </div>
-      <div className="flex-1">
-        <div className="text-[14px] font-medium leading-[1.3]">{title}</div>
-        {hint && <div className="mt-0.5 text-[12px] leading-[1.3] text-muted-foreground">{hint}</div>}
-      </div>
-      <div className="text-[12px] text-muted-foreground group-hover:text-accent">
-        {cta || "Go"} <ChevronRight size={12} className="inline" />
-      </div>
-    </button>
-  );
+  return events
+    .filter((e) => e.at)
+    .sort((a, b) => new Date(b.at) - new Date(a.at))
+    .slice(0, 6);
 }
 
 export function StudentOverviewTab({ onJump, onToast }) {
@@ -136,8 +131,8 @@ export function StudentOverviewTab({ onJump, onToast }) {
       setInterviews((prev) => prev.map((r) => (r.id === interview.id ? { ...r, ...updated } : r)));
       onToast?.(
         action === "accept"
-          ? "Interview accepted — meeting link sent by email"
-          : "Interview declined — the company has been notified",
+          ? "Accepted. Meeting link is in both inboxes."
+          : "Declined. The company has been notified.",
       );
     } catch (err) {
       setInterviews((prev) => prev.map((r) => (r.id === interview.id ? { ...r, status: original } : r)));
@@ -145,11 +140,9 @@ export function StudentOverviewTab({ onJump, onToast }) {
     }
   };
 
-  // ---- Derived state ----
   const completion = useMemo(() => computeProfileCompletion(profile), [profile]);
 
   const pipeline = useMemo(() => {
-    // Join applications with interviews (no shortlist info on student side — that's company-private).
     const interviewByJob = new Map();
     for (const it of interviews) interviewByJob.set(it.job_id, it);
     return applications.map((a) => {
@@ -171,27 +164,6 @@ export function StudentOverviewTab({ onJump, onToast }) {
   }, [pipeline]);
 
   const totalApps = pipeline.length;
-  const donutData = useMemo(
-    () =>
-      STAGES
-        .filter((s) => stageCounts[s] > 0)
-        .map((s) => ({ name: STAGE_LABEL[s], value: stageCounts[s], color: STAGE_COLOR[s] })),
-    [stageCounts],
-  );
-
-  const timeline = useMemo(
-    () => bucketByDate(applications, (r) => r.created_at, 30),
-    [applications],
-  );
-
-  const avgMatch = useMemo(() => {
-    const scores = pipeline.map((p) => p.match_score_at_apply).filter((s) => typeof s === "number");
-    if (!scores.length) return 0;
-    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-  }, [pipeline]);
-
-  const topMissing = useMemo(() => aggregateMissingSkills(jobs), [jobs]);
-  const bestCategories = useMemo(() => aggregateBestCategories(jobs), [jobs]);
 
   const eligibleJobs = useMemo(
     () =>
@@ -205,6 +177,7 @@ export function StudentOverviewTab({ onJump, onToast }) {
     () => interviews.filter((i) => i.status === "pending"),
     [interviews],
   );
+
   const upcomingInterviews = useMemo(
     () =>
       interviews
@@ -214,160 +187,289 @@ export function StudentOverviewTab({ onJump, onToast }) {
     [interviews],
   );
 
-  // Next actions list — rule-based, prioritized.
+  const inFlight =
+    stageCounts.under_review +
+    stageCounts.shortlisted +
+    stageCounts.interview_requested +
+    stageCounts.interview_scheduled;
+
+  const interviewsThisWeek = useMemo(() => {
+    const now = new Date();
+    const inWeek = new Date(now.getTime() + 7 * 86400000);
+    return interviews.filter(
+      (i) =>
+        i.status === "accepted" &&
+        new Date(i.interview_date) > now &&
+        new Date(i.interview_date) <= inWeek,
+    ).length;
+  }, [interviews]);
+
+  const activity = useMemo(
+    () => buildActivity({ pipeline, interviews }),
+    [pipeline, interviews],
+  );
+
+  const heroTokens = useMemo(() => {
+    const tokens = [];
+    if (eligibleJobs.length > 0) {
+      tokens.push({ type: "text", value: "You've got " });
+      tokens.push({
+        type: "number",
+        value: eligibleJobs.length,
+        suffix: ` ${eligibleJobs.length === 1 ? "door" : "doors"} open`,
+        onClick: () => onJump?.("jobs"),
+      });
+    } else if (totalApps > 0) {
+      tokens.push({ type: "text", value: "You have " });
+      tokens.push({
+        type: "number",
+        value: inFlight,
+        suffix: ` ${inFlight === 1 ? "CV" : "CVs"} in play`,
+        onClick: () => onJump?.("applications"),
+      });
+    } else {
+      tokens.push({ type: "text", value: "No CVs in flight yet — " });
+      tokens.push({
+        type: "number",
+        value: jobs.length,
+        suffix: ` roles waiting to be scored`,
+        onClick: () => onJump?.("jobs"),
+      });
+    }
+
+    if (pendingInterviews.length > 0) {
+      tokens.push({ type: "text", value: ", " });
+      tokens.push({
+        type: "number",
+        value: pendingInterviews.length,
+        suffix: ` ${pendingInterviews.length === 1 ? "company" : "companies"} waiting on you`,
+        onClick: () => onJump?.("interviews"),
+      });
+    } else if (interviewsThisWeek > 0) {
+      tokens.push({ type: "text", value: ", " });
+      tokens.push({
+        type: "number",
+        value: interviewsThisWeek,
+        suffix: ` ${interviewsThisWeek === 1 ? "interview" : "interviews"} this week`,
+        onClick: () => onJump?.("interviews"),
+      });
+    }
+
+    tokens.push({ type: "text", value: ", profile is " });
+    tokens.push({
+      type: "number",
+      value: completion.percent,
+      suffix: "% ready",
+      onClick: () => onJump?.("profile"),
+    });
+    tokens.push({ type: "text", value: "." });
+    return tokens;
+  }, [
+    eligibleJobs.length,
+    totalApps,
+    inFlight,
+    jobs.length,
+    pendingInterviews.length,
+    interviewsThisWeek,
+    completion.percent,
+    onJump,
+  ]);
+
   const nextActions = useMemo(() => {
     const actions = [];
     if (pendingInterviews.length > 0) {
       actions.push({
-        icon: <CalendarClock size={16} />,
+        icon: CalendarClock,
         tone: "warn",
-        title: `Respond to ${pendingInterviews.length} pending interview request${pendingInterviews.length === 1 ? "" : "s"}`,
-        hint: "Companies are waiting on your accept / reject.",
-        cta: "Open",
+        title: `${pendingInterviews.length} ${pendingInterviews.length === 1 ? "company" : "companies"} waiting on your answer`,
+        hint: "They sent an interview request. Accept or decline so they can plan.",
+        cta: "Open requests",
         onClick: () => onJump?.("interviews"),
       });
     }
     if (!profile?.visibility_flag) {
       actions.push({
-        icon: <Activity size={16} />,
-        title: "Turn on profile visibility",
-        hint: "Companies can only match and contact you when this is on.",
-        cta: "Enable",
+        icon: Activity,
+        title: "Turn on visibility — companies can't find you yet",
+        hint: "Off means zero matches sent to recruiters. One toggle fixes it.",
+        cta: "Turn on",
         onClick: () => onJump?.("profile"),
       });
     }
     if (!completion.items[0].done) {
       actions.push({
-        icon: <Upload size={16} />,
+        icon: Upload,
         tone: "warn",
-        title: "Upload your CV to generate your AI profile",
-        hint: "Most fields fill themselves once your resume is parsed.",
-        cta: "Upload",
+        title: "Drop your CV. AI does the rest in 15 to 30 seconds",
+        hint: "Profile, scores, and ranked jobs — all built from one PDF.",
+        cta: "Drop CV",
         onClick: () => onJump?.("resume"),
       });
     }
     if ((profile?.skills?.length || 0) < 5 && (profile?.skills?.length || 0) > 0) {
       actions.push({
-        icon: <Sparkles size={16} />,
-        title: `Add ${5 - profile.skills.length} more skill${5 - profile.skills.length === 1 ? "" : "s"} to improve matching`,
+        icon: Sparkles,
+        title: `Add ${5 - profile.skills.length} more skill${5 - profile.skills.length === 1 ? "" : "s"} — match scores go up immediately`,
         hint: "Skills carry the most weight in your match score.",
-        cta: "Edit",
+        cta: "Edit profile",
         onClick: () => onJump?.("profile"),
       });
     }
     if (eligibleJobs.length > 0 && totalApps < 3) {
       actions.push({
-        icon: <Target size={16} />,
+        icon: Target,
         tone: "warn",
-        title: `Apply to ${Math.min(eligibleJobs.length, 3)} recommended role${eligibleJobs.length === 1 ? "" : "s"}`,
-        hint: `You meet the threshold on ${eligibleJobs.length} job${eligibleJobs.length === 1 ? "" : "s"} — don't leave them sitting.`,
-        cta: "Browse",
+        title: `Apply to ${Math.min(eligibleJobs.length, 3)} role${eligibleJobs.length === 1 ? "" : "s"} where you already cleared the bar`,
+        hint: `${eligibleJobs.length} ${eligibleJobs.length === 1 ? "company says" : "companies say"} you fit. Don't leave them sitting.`,
+        cta: "See matches",
         onClick: () => onJump?.("jobs"),
       });
     }
-    if (topMissing.length >= 3) {
+    if (!completion.items.find((i) => i.key === "links")?.done) {
       actions.push({
-        icon: <Lightbulb size={16} />,
-        title: `Review missing skills across ${topMissing.length} role${topMissing.length === 1 ? "" : "s"}`,
-        hint: "Click any missing skill on the Jobs tab to open a learning resource.",
-        cta: "Open",
-        onClick: () => onJump?.("jobs"),
+        icon: Lightbulb,
+        title: "Add a LinkedIn or GitHub link",
+        hint: "Recruiters click through. Empty link is a missed signal.",
+        cta: "Add link",
+        onClick: () => onJump?.("profile"),
       });
     }
-    return actions.slice(0, 5);
-  }, [profile, completion, eligibleJobs, totalApps, pendingInterviews, topMissing, onJump]);
+    return actions;
+  }, [
+    profile,
+    completion.items,
+    eligibleJobs.length,
+    totalApps,
+    pendingInterviews.length,
+    onJump,
+  ]);
 
   if (loading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl bg-muted/40" />
-        ))}
+      <div className="space-y-6">
+        <div className="h-32 animate-pulse rounded-xl bg-muted/40" />
+        <div className="grid gap-4 lg:grid-cols-[5fr_3fr]">
+          <div className="h-40 animate-pulse rounded-xl bg-muted/40" />
+          <div className="h-40 animate-pulse rounded-xl bg-muted/40" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Row 1 — KPIs */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Total applications"
-          value={totalApps}
-          hint={
-            totalApps === 0
-              ? "Apply to your first role to start tracking."
-              : `${stageCounts.under_review} under review, ${stageCounts.interview_requested} need your response.`
-          }
-          icon={<FileText size={16} />}
-        />
-        <KpiCard
-          label="Interviews scheduled"
-          value={stageCounts.interview_scheduled}
-          hint={
-            upcomingInterviews[0]
-              ? `Next: ${new Date(upcomingInterviews[0].interview_date).toLocaleDateString()}`
-              : "No upcoming interviews."
-          }
-          icon={<CalendarClock size={16} />}
-          tone={stageCounts.interview_scheduled > 0 ? "accent" : "default"}
-        />
-        <KpiCard
-          label="Avg match score"
-          value={`${avgMatch}%`}
-          hint={
-            avgMatch >= 75
-              ? "Strong fit on the roles you applied to."
-              : avgMatch > 0
-              ? "Aim for ≥75% by closing skill gaps."
-              : "Apply to a few roles to see your avg."
-          }
-          icon={<Target size={16} />}
-          tone={avgMatch >= 75 ? "success" : avgMatch >= 50 ? "default" : "warn"}
-        />
-        <KpiCard
-          label="Eligible jobs"
-          value={eligibleJobs.length}
-          hint={
-            eligibleJobs.length > 0
-              ? `You meet the threshold — go apply.`
-              : "Improve your profile to unlock more jobs."
-          }
-          icon={<CheckCircle2 size={16} />}
-          tone={eligibleJobs.length > 0 ? "accent" : "default"}
-        />
-      </div>
+    <div className="space-y-8">
+      {/* Hero */}
+      <section className="pb-2">
+        <HeroStatement tokens={heroTokens} />
+      </section>
 
-      {/* Row 2 — Profile completion + What To Do Next */}
-      <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile completion</CardTitle>
-            <CardDescription>
-              {completion.percent === 100
-                ? "All set — your profile is fully filled in."
-                : `Your profile is ${completion.percent}% complete. Finish these to improve job matching.`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-start gap-5">
-              <CircularProgress value={completion.percent} size={96} stroke={9} />
-              <ul className="grid flex-1 gap-2 sm:grid-cols-2">
+      {/* Next action + activity */}
+      <section className="grid gap-5 lg:grid-cols-[5fr_3fr]">
+        <NextActionCard
+          actions={nextActions}
+          emptyState={{
+            title: "You're caught up.",
+            hint: "Nothing needs your attention right now. New roles drop into Jobs as companies post them.",
+          }}
+        />
+        <ActivityFeed
+          title="Lately"
+          items={activity}
+          emptyState="Apply to a role and your timeline starts here."
+        />
+      </section>
+
+      {/* Pending interviews — surface if any */}
+      {(pendingInterviews.length > 0 || upcomingInterviews.length > 0) && (
+        <section>
+          <h2 className="mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            On the calendar
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {pendingInterviews.map((i) => (
+              <div
+                key={i.id}
+                className="rounded-xl bg-warn-tint p-5 ring-1 ring-warn/25 transition-shadow hover:shadow-card"
+              >
+                <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-warn">
+                  Waiting on you
+                </div>
+                <div className="mt-1 text-[15px] font-semibold leading-[1.3]">
+                  {i.job_title}
+                </div>
+                <div className="mt-1 text-[12px] text-muted-foreground">
+                  {i.company_name} · {new Date(i.interview_date).toLocaleString()}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" variant="success" onClick={() => decideInterview(i, "accept")}>
+                    Accept
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => decideInterview(i, "reject")}>
+                    Decline
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {upcomingInterviews.map((i) => (
+              <div
+                key={i.id}
+                className="rounded-xl bg-accent-tint p-5 ring-1 ring-accent/20 transition-shadow hover:shadow-card"
+              >
+                <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-accent">
+                  Coming up
+                </div>
+                <div className="mt-1 text-[15px] font-semibold leading-[1.3]">
+                  {i.job_title}
+                </div>
+                <div className="mt-1 text-[12px] text-muted-foreground">
+                  {i.company_name} · {new Date(i.interview_date).toLocaleString()}
+                </div>
+                <div className="mt-3">
+                  <JoinMeetingButton
+                    interviewDate={i.interview_date}
+                    meetingLink={i.meeting_link}
+                    status={i.status}
+                    hireStatus={i.hire_status}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Profile readiness — compact */}
+      {completion.percent < 100 && (
+        <section className="rounded-xl bg-card p-6 ring-1 ring-black/[0.04]">
+          <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
+            <div className="text-accent">
+              <RingProgress value={completion.percent} size={84} stroke={8} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-display text-[18px] font-semibold leading-[1.2] tracking-[-0.01em]">
+                How findable you are
+              </h3>
+              <p className="mt-1 text-[14px] leading-[1.45] text-muted-foreground">
+                Each box you tick lifts your match scores. Aim for 100%.
+              </p>
+              <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
                 {completion.items.map((it) => (
                   <li
                     key={it.key}
-                    className={`flex items-center gap-2 text-[13px] ${it.done ? "text-muted-foreground line-through" : ""}`}
+                    className={`flex items-center gap-1.5 text-[13px] ${
+                      it.done ? "text-muted-foreground line-through" : "text-foreground"
+                    }`}
                   >
                     {it.done ? (
-                      <CheckCircle2 size={14} className="text-success" />
+                      <CheckCircle2 size={13} className="text-success" />
                     ) : (
-                      <XCircle size={14} className="text-muted-foreground" />
+                      <XCircle size={13} className="text-muted-foreground" />
                     )}
                     <span>{it.label}</span>
                     {!it.done && (
                       <button
                         type="button"
-                        className="ml-auto text-[12px] text-accent hover:underline"
+                        className="ml-1 text-[12px] font-medium text-accent transition-opacity hover:opacity-80"
                         onClick={() => onJump?.(it.tab)}
                       >
                         Fix →
@@ -377,185 +479,22 @@ export function StudentOverviewTab({ onJump, onToast }) {
                 ))}
               </ul>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </section>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>What to do next</CardTitle>
-            <CardDescription>Prioritized by what unlocks the most matches.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {nextActions.length === 0 ? (
-              <div className="rounded-lg bg-success/[0.06] p-4 text-[14px] text-success ring-1 ring-success/20">
-                <CheckCircle2 size={16} className="mr-1 inline" />
-                You're on top of everything. Keep an eye on new roles in the Jobs tab.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {nextActions.map((a, idx) => (
-                  <NextAction key={idx} {...a} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 3 — Application tracking + Applications over time */}
-      <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Application status</CardTitle>
-            <CardDescription>
-              {totalApps === 0
-                ? "No applications yet — browse jobs to get started."
-                : `${totalApps} application${totalApps === 1 ? "" : "s"} across the pipeline.`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-[1fr_1fr] sm:items-center">
-              <PipelineDonut data={donutData} />
-              <ul className="space-y-1.5 text-[13px]">
-                {STAGES.map((s) => {
-                  const count = stageCounts[s] || 0;
-                  if (count === 0 && totalApps > 0) return null;
-                  return (
-                    <li key={s} className="flex items-center gap-2">
-                      <span
-                        className="inline-block h-2 w-2 rounded-full"
-                        style={{ background: STAGE_COLOR[s] }}
-                      />
-                      <span className="flex-1">{STAGE_LABEL[s]}</span>
-                      <span className="font-medium">{count}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Applications over time</CardTitle>
-            <CardDescription>Last 30 days.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {totalApps === 0 ? (
-              <div className="flex h-[180px] items-center justify-center text-[13px] text-muted-foreground">
-                Apply to roles to see your activity.
-              </div>
-            ) : (
-              <TimelineLine data={timeline} />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 4 — Match insights + Interviews & deadlines */}
-      <div className="grid gap-4 lg:grid-cols-[3fr_2fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Match insights</CardTitle>
-            <CardDescription>Where to focus to unlock more roles.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <div className="text-[12px] uppercase tracking-[0.06em] text-muted-foreground">
-                  Best-matching role types
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {bestCategories.length === 0 ? (
-                    <span className="text-[13px] text-muted-foreground">
-                      Apply to more jobs to see patterns.
-                    </span>
-                  ) : (
-                    bestCategories.map((c) => (
-                      <Badge key={c} variant="accent">
-                        {c}
-                      </Badge>
-                    ))
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="text-[12px] uppercase tracking-[0.06em] text-muted-foreground">
-                  Top missing skills
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {topMissing.length === 0 ? (
-                    <span className="text-[13px] text-muted-foreground">
-                      No major gaps detected.
-                    </span>
-                  ) : (
-                    topMissing.map((s) => <SkillLearnLink key={s} skill={s} />)
-                  )}
-                </div>
-                {topMissing.length > 0 && (
-                  <p className="mt-2 text-[12px] text-muted-foreground">
-                    Click a skill to open a free learning resource.
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Interviews & deadlines</CardTitle>
-            <CardDescription>Pending requests and upcoming interviews.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {pendingInterviews.length === 0 && upcomingInterviews.length === 0 ? (
-              <div className="text-[13px] text-muted-foreground">No interview activity yet.</div>
-            ) : (
-              <div className="space-y-3">
-                {pendingInterviews.map((i) => (
-                  <div
-                    key={i.id}
-                    className="rounded-lg border border-warn/30 bg-warn/[0.04] px-3 py-2.5"
-                  >
-                    <div className="text-[13px] font-medium">{i.job_title}</div>
-                    <div className="text-[12px] text-muted-foreground">
-                      {i.company_name} · {new Date(i.interview_date).toLocaleString()}
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <Button size="sm" variant="success" onClick={() => decideInterview(i, "accept")}>
-                        Accept
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => decideInterview(i, "reject")}>
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {upcomingInterviews.map((i) => (
-                  <div
-                    key={i.id}
-                    className="rounded-lg border border-accent/30 bg-accent/[0.04] px-3 py-2.5"
-                  >
-                    <div className="text-[13px] font-medium">{i.job_title}</div>
-                    <div className="text-[12px] text-muted-foreground">
-                      {i.company_name} · {new Date(i.interview_date).toLocaleString()}
-                    </div>
-                    <div className="mt-2">
-                      <JoinMeetingButton
-                        interviewDate={i.interview_date}
-                        meetingLink={i.meeting_link}
-                        status={i.status}
-                        hireStatus={i.hire_status}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Footer drill-down */}
+      <section className="flex items-center justify-between rounded-xl bg-[rgba(0,0,0,0.02)] px-5 py-4">
+        <div>
+          <div className="text-[13px] font-medium text-foreground">Want the numbers behind this?</div>
+          <div className="text-[12px] text-muted-foreground">
+            Application funnel, match patterns, skill gaps — all on Insights.
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => onJump?.("insights")}>
+          Open Insights →
+        </Button>
+      </section>
     </div>
   );
 }

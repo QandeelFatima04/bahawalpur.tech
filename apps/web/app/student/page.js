@@ -1,11 +1,23 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, uploadFile } from "@/lib/api";
 import { friendlyError } from "@/lib/friendlyError";
 import { useTabState } from "@/lib/useTabState";
 import { RequireRole } from "@/components/RequireRole";
 import { DashboardShell } from "@/components/DashboardShell";
+import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Button } from "@/components/ui/button";
+import {
+  LayoutDashboard,
+  FileText as FileTextIcon,
+  UserCircle,
+  Sparkles as SparklesIcon,
+  Briefcase,
+  Send as SendIcon,
+  CalendarClock as CalendarClockIcon,
+  BarChart3,
+} from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +29,9 @@ import { Table, THead, TBody, Tr, Th, Td } from "@/components/ui/table";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { JoinMeetingButton } from "@/components/JoinMeetingButton";
 import { SkillLearnLink } from "@/components/SkillLearnLink";
+import { FilterPills } from "@/components/dashboard/FilterPills";
+import { JobMatchCard, JobMatchRow } from "@/components/dashboard/JobMatchCard";
+import { tierForScore } from "@/components/dashboard/MatchScoreChip";
 import { StudentOverviewTab } from "./StudentOverviewTab";
 import { Upload, CheckCircle2, XCircle, Clock, Sparkles, Lock, EyeOff, CircleCheck, Circle, Pencil, Trash2 } from "lucide-react";
 
@@ -176,7 +191,7 @@ function ProfileTab({ profile, reload, onToast, onDeleted }) {
           portfolio_url: form.portfolio_url.trim() || null,
         }),
       });
-      onToast("Profile saved");
+      onToast("Saved. Match scores recalculating.");
       reload();
     } catch (err) {
       onToast(friendlyError(err));
@@ -190,7 +205,7 @@ function ProfileTab({ profile, reload, onToast, onDeleted }) {
     setDeleting(true);
     try {
       await api("/students/me/profile", { method: "DELETE" });
-      onToast("Profile data cleared. You can now upload a new resume.");
+      onToast("Profile wiped. Drop a fresh CV to start over.");
       await reload();
       onDeleted?.();
     } catch (err) {
@@ -528,7 +543,7 @@ function ResumeTab({ onToast, reload, profile, onParsed, onGoToProfile }) {
     try {
       const res = await uploadFile("/students/me/resume", file);
       setStatus(res);
-      onToast("Resume uploaded, parsing in background...");
+      onToast("Got it. Reading your CV — 15 to 30 seconds.");
       await pollStatus(res.id);
     } catch (err) {
       onToast(friendlyError(err));
@@ -709,6 +724,7 @@ function JobsTab({ onToast, profileVisible, hasProfile, onApplied }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [filter, setFilter] = useState("open");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -723,160 +739,167 @@ function JobsTab({ onToast, profileVisible, hasProfile, onApplied }) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const apply = async (job) => {
-    // Optimistic: flip to "Applied" immediately; roll back on failure.
-    setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, already_applied: true } : j)));
+    setJobs((prev) =>
+      prev.map((j) => (j.id === job.id ? { ...j, already_applied: true } : j)),
+    );
     try {
-      await api("/students/me/applications", { method: "POST", body: JSON.stringify({ job_id: job.id }) });
-      onToast(`Applied to ${job.title}`);
-      onApplied?.();  // tick the onboarding checklist
+      await api("/students/me/applications", {
+        method: "POST",
+        body: JSON.stringify({ job_id: job.id }),
+      });
+      onToast(`Application is in. ${job.company_name} sees you at the top of their pile.`);
+      onApplied?.();
     } catch (err) {
-      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, already_applied: false } : j)));
+      setJobs((prev) =>
+        prev.map((j) => (j.id === job.id ? { ...j, already_applied: false } : j)),
+      );
       onToast(friendlyError(err));
     }
   };
 
-  if (loading) return <Card><CardContent className="pt-4"><SkeletonTable rows={5} cols={6} /></CardContent></Card>;
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="pt-4">
+          <SkeletonTable rows={5} cols={4} />
+        </CardContent>
+      </Card>
+    );
+  }
   if (error) {
     return (
       <EmptyState
         title="Couldn't load jobs"
         message={`${error}. Make sure the API is running.`}
-        action={<Button variant="outline" onClick={load}>Retry</Button>}
+        action={
+          <Button variant="outline" onClick={load}>
+            Retry
+          </Button>
+        }
       />
     );
   }
   if (jobs.length === 0) {
     return (
       <EmptyState
-        title="No active jobs right now"
-        message="Once companies post new roles you'll see them ranked by your match score here."
+        title="Quiet week on the boards."
+        message="When a new role drops we'll rank it against you and put the strong fits at the top."
       />
     );
   }
 
-  const eligible = jobs.filter((j) => j.total_score >= j.apply_threshold);
-  const skillGap = jobs.filter((j) => j.total_score < j.apply_threshold && j.total_score >= 30);
-  const farAway = jobs.filter((j) => j.total_score < 30);
+  // Filter sets
+  const openDoors = jobs.filter(
+    (j) => j.total_score >= j.apply_threshold && !j.already_applied,
+  );
+  const strong = jobs.filter((j) => j.total_score >= 75);
+  const close = jobs.filter((j) => j.total_score >= 50 && j.total_score < 75);
+  const stretch = jobs.filter((j) => j.total_score < 50);
 
-  const renderRow = (job) => {
-    const belowThreshold = job.total_score < job.apply_threshold;
-    const gap = Math.max(0, job.apply_threshold - job.total_score);
-    let actionCell;
-    if (job.already_applied) {
-      actionCell = <Badge variant="success">Applied</Badge>;
-    } else if (!profileVisible) {
-      actionCell = (
-        <div className="flex flex-col items-end gap-1">
-          <Badge variant="warn" className="gap-1">
-            <EyeOff size={12} /> Visibility off
-          </Badge>
-          <span className="text-xs text-muted-foreground">Enable on the Profile tab</span>
+  const filterItems = [
+    { key: "open", label: "Doors open", count: openDoors.length },
+    { key: "strong", label: "Strong fit", count: strong.length },
+    { key: "close", label: "Close", count: close.length },
+    { key: "stretch", label: "Stretch", count: stretch.length },
+    { key: "all", label: "All", count: jobs.length },
+  ];
+
+  let visibleJobs;
+  if (filter === "open") visibleJobs = openDoors;
+  else if (filter === "strong") visibleJobs = strong;
+  else if (filter === "close") visibleJobs = close;
+  else if (filter === "stretch") visibleJobs = stretch;
+  else visibleJobs = jobs;
+
+  // Sort: applied last, then by score desc
+  visibleJobs = [...visibleJobs].sort((a, b) => {
+    if (a.already_applied !== b.already_applied)
+      return a.already_applied ? 1 : -1;
+    return (b.total_score || 0) - (a.total_score || 0);
+  });
+
+  // Split into "strong fit" (rendered as cards) vs "everything else" (rendered as rows)
+  // — only when not on the "strong" filter (which is all cards).
+  const cardJobs =
+    filter === "strong" || filter === "all" || filter === "open"
+      ? visibleJobs.filter((j) => tierForScore(j.total_score) === "strong")
+      : [];
+  const rowJobs = visibleJobs.filter((j) => !cardJobs.includes(j));
+
+  return (
+    <div className="space-y-5">
+      {!hasProfile && (
+        <div className="rounded-md bg-accent-tint px-4 py-3 text-[13px] text-foreground ring-1 ring-accent/30">
+          Your profile is empty. Drop your CV on the CV tab to get accurate match scores.
         </div>
-      );
-    } else if (belowThreshold) {
-      actionCell = (
-        <div className="flex flex-col items-end gap-1">
-          <Badge variant="destructive" className="gap-1">
-            <Lock size={12} /> Closed for you
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            Need {job.apply_threshold.toFixed(0)}% · you have {job.total_score.toFixed(0)}% ({gap.toFixed(0)}% short)
-          </span>
+      )}
+      {!profileVisible && hasProfile && (
+        <div className="rounded-md bg-warn-tint px-4 py-3 text-[13px] text-foreground ring-1 ring-warn/30">
+          Companies can't see you yet. Turn on visibility from Profile to apply.
         </div>
-      );
-    } else {
-      actionCell = (
-        <Button size="sm" variant="primary" onClick={() => apply(job)}>
-          Apply
-        </Button>
-      );
-    }
-    return (
-      <Tr key={job.id}>
-        <Td>
-          <div className="font-medium">{job.title}</div>
-          <div className="text-xs text-muted-foreground">{job.required_skills.join(" · ")}</div>
-        </Td>
-        <Td>{job.company_name}</Td>
-        <Td>{job.location}</Td>
-        <Td><ScoreBadge score={job.total_score} /></Td>
-        <Td>{job.apply_threshold.toFixed(0)}%</Td>
-        <Td>
-          {job.missing_skills.length === 0 ? (
-            <Badge variant="success">All covered</Badge>
-          ) : (
-            <div className="flex flex-wrap gap-1">
-              {job.missing_skills.map((s) => (
-                <SkillLearnLink key={s} skill={s} />
+      )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-display text-[22px] font-semibold leading-[1.2] tracking-[-0.01em]">
+            Doors that are open to you.
+          </h2>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">
+            Cleared the company's bar? Apply before someone else fills the slot.
+          </p>
+        </div>
+        <FilterPills
+          items={filterItems}
+          value={filter}
+          onChange={setFilter}
+          layoutId="student-jobs-filter"
+        />
+      </div>
+
+      {visibleJobs.length === 0 ? (
+        <div className="rounded-xl bg-card p-8 text-center ring-1 ring-black/[0.04]">
+          <p className="text-[15px] font-medium text-foreground">
+            Nothing in this bucket yet.
+          </p>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Try another filter, or improve your profile to lift more scores.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {cardJobs.length > 0 && (
+            <div className="grid gap-3 md:grid-cols-2">
+              {cardJobs.map((job) => (
+                <JobMatchCard
+                  key={job.id}
+                  job={job}
+                  profileVisible={profileVisible}
+                  onApply={apply}
+                />
               ))}
             </div>
           )}
-        </Td>
-        <Td className="text-right">{actionCell}</Td>
-      </Tr>
-    );
-  };
-
-  const Section = ({ title, description, rows }) => (
-    rows.length === 0 ? null : (
-      <Card>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Role</Th>
-                <Th>Company</Th>
-                <Th>Location</Th>
-                <Th>Match</Th>
-                <Th>Threshold</Th>
-                <Th>Missing skills</Th>
-                <Th className="text-right">Action</Th>
-              </Tr>
-            </THead>
-            <TBody>{rows.map(renderRow)}</TBody>
-          </Table>
-        </CardContent>
-      </Card>
-    )
-  );
-
-  return (
-    <div className="space-y-4">
-      {!hasProfile && (
-        <div className="rounded-md border border-accent/30 bg-accent/5 p-3 text-sm">
-          Your profile is empty — upload a resume on the Resume tab to get accurate match scores.
+          {rowJobs.length > 0 && (
+            <div className="rounded-xl bg-card p-2 ring-1 ring-black/[0.04]">
+              <div className="divide-y divide-black/[0.04]">
+                {rowJobs.map((job) => (
+                  <JobMatchRow
+                    key={job.id}
+                    job={job}
+                    profileVisible={profileVisible}
+                    onApply={apply}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
-      {!profileVisible && (
-        <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
-          Turn on profile visibility (Profile tab) before you apply to jobs.
-        </div>
-      )}
-
-      <Section
-        title="Ready to apply"
-        description="You meet the company's minimum match score on these roles."
-        rows={eligible}
-      />
-
-      <Section
-        title="Close matches — small skill gap"
-        description="A few skills away from applying. Add these on your profile or learn them to unlock these roles."
-        rows={skillGap}
-      />
-
-      <Section
-        title="Other roles"
-        description="Significant skill gaps — keep these in mind for the future."
-        rows={farAway}
-      />
     </div>
   );
 }
@@ -1159,14 +1182,27 @@ function OnboardingChecklist({ profile, hasApplied, onJump, onDismiss }) {
 
 
 function StudentDashboard() {
+  const router = useRouter();
   const [profile, setProfile] = useState(null);
   const [toast, setToast] = useState(null);
-  const [tab, setTab] = useTabState("overview");
+  const [tab, setTabRaw] = useTabState("overview");
   const [hasApplied, setHasApplied] = useState(false);
   const [checklistDismissed, setChecklistDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("cb_student_checklist_dismissed") === "1";
   });
+
+  // Allow onJump("insights") to route to /student/insights
+  const setTab = useCallback(
+    (next) => {
+      if (next === "insights") {
+        router.push("/student/insights");
+        return;
+      }
+      setTabRaw(next);
+    },
+    [router, setTabRaw],
+  );
 
   const loadProfile = useCallback(async () => {
     try {
@@ -1197,14 +1233,32 @@ function StudentDashboard() {
   }, []);
 
   const onParsed = useCallback(() => {
-    setToast("Profile auto-filled from your resume");
+    setToast("CV read. Profile built. Open it and fix anything we got wrong.");
     setTab("profile");
   }, [setTab]);
 
+  const navItems = [
+    { key: "overview", label: "Overview", icon: LayoutDashboard },
+    { key: "resume", label: "CV", icon: FileTextIcon },
+    { key: "profile", label: "Profile", icon: UserCircle },
+    { key: "report", label: "Career report", icon: SparklesIcon },
+    { key: "jobs", label: "Jobs", icon: Briefcase },
+    { key: "applications", label: "Applications", icon: SendIcon },
+    { key: "interviews", label: "Interviews", icon: CalendarClockIcon },
+    { key: "insights", label: "Insights", icon: BarChart3, href: "/student/insights" },
+  ];
+
   return (
     <DashboardShell
-      title="Student dashboard"
-      subtitle="Upload your resume — we'll do the rest: profile, career report, and ranked job matches."
+      title="Your shortlist of jobs that actually want you."
+      subtitle="Drop one PDF. We read it, score every open role against it, and hide the ones you can't win."
+      nav={
+        <DashboardSidebar
+          items={navItems}
+          activeKey={tab}
+          onSelect={setTab}
+        />
+      }
     >
       {!checklistDismissed && profile && (
         <OnboardingChecklist
@@ -1215,11 +1269,11 @@ function StudentDashboard() {
         />
       )}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="lg:hidden">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="resume">Resume</TabsTrigger>
+          <TabsTrigger value="resume">CV</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="report">Career report</TabsTrigger>
+          <TabsTrigger value="report">Report</TabsTrigger>
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
           <TabsTrigger value="applications">Applications</TabsTrigger>
           <TabsTrigger value="interviews">Interviews</TabsTrigger>

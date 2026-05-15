@@ -30,7 +30,7 @@ function TopNav() {
             href="/auth?mode=register"
             className="rounded-pill bg-white px-3.5 py-1.5 text-[12px] font-medium text-foreground hover:bg-white/90"
           >
-            Get started
+            Create account
           </Link>
         </div>
       </div>
@@ -46,32 +46,32 @@ function Hero() {
           CareerBridge AI
         </p>
         <h1 className="display-hero text-white">
-          Where graduates meet
+          The first job
           <br />
-          the right first job.
+          you actually fit.
         </h1>
         <p className="mx-auto mt-6 max-w-[680px] text-[21px] font-normal leading-[1.38] tracking-[0.011em] text-white/80">
-          CareerBridge uses AI to match students with companies based on real skills &mdash; so
-          students apply only where they fit, and companies hire from a pre-ranked shortlist.
+          AI reads your CV, scores you against every live role, and only shows you the ones where
+          you&rsquo;d win. Companies see the same ranking from the other side.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-5">
           <Link
             href="/auth?mode=register&role=student"
             className="pill-link on-dark text-[17px]"
           >
-            I&rsquo;m a student <ArrowRight size={16} />
+            I need a first job <ArrowRight size={16} />
           </Link>
           <Link
             href="/auth?mode=register&role=company"
             className="pill-link on-dark text-[17px]"
           >
-            I&rsquo;m hiring graduates <ArrowRight size={16} />
+            I&rsquo;m hiring this quarter <ArrowRight size={16} />
           </Link>
         </div>
         <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
           <Link href="/auth?mode=register">
             <Button variant="primary" size="md">
-              Create an account
+              Create account
             </Button>
           </Link>
           <Link href="/auth">
@@ -81,7 +81,7 @@ function Hero() {
           </Link>
         </div>
         <p className="mt-6 text-[13px] tracking-[-0.01em] text-white/55">
-          Free for students. Trusted by verified companies hiring early-career talent.
+          Free for students. Companies admin-verified before they can post.
         </p>
       </div>
 
@@ -227,7 +227,7 @@ function HowItWorks() {
             How it works
           </p>
           <h2 className="display-section mx-auto max-w-[720px]">
-            Three steps from resume to hire.
+            Three steps from CV to hire.
           </h2>
         </div>
         <div className="mt-14 grid gap-6 md:grid-cols-3">
@@ -262,16 +262,15 @@ function FinalCTA() {
     <section className="bg-black text-white">
       <div className="mx-auto max-w-[980px] px-6 py-24 text-center">
         <h2 className="display-section mx-auto max-w-[760px] text-white">
-          Start matching the right people to the right first jobs.
+          Stop screening. Start hiring.
         </h2>
         <p className="mx-auto mt-5 max-w-[600px] text-[21px] leading-[1.33] tracking-[0.011em] text-white/70">
-          Free for students. Built for companies that hire graduates, and admins who keep the
-          marketplace honest.
+          Free for students. Built for companies hiring graduates and admins keeping the gate.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <Link href="/auth?mode=register">
             <Button variant="primary" size="md">
-              Get started
+              Create account
             </Button>
           </Link>
           <Link href="/auth" className="pill-link on-dark text-[17px]">
@@ -318,8 +317,8 @@ export default function HomePage() {
         id="students"
         tone="light"
         eyebrow="For students"
-        headline="Upload your CV once. Get matched for everything."
-        subhead="AI builds your structured profile, writes a career report, and only shows you roles where you're a strong fit."
+        headline="One CV upload. Every match, scored."
+        subhead="AI extracts your skills, writes your career report, and quietly hides the roles you can't win."
         primary={{ label: "Start as a student", href: "/auth?mode=register&role=student" }}
         secondary={{ label: "Learn more", href: "#how-it-works" }}
         highlights={[
@@ -342,8 +341,8 @@ export default function HomePage() {
         id="companies"
         tone="dark"
         eyebrow="For companies"
-        headline="Skip the weak pile. Hire from the top."
-        subhead="Post a role, set your apply threshold, and review pre-ranked candidates the moment they apply."
+        headline="Skip the pile. Read the top five."
+        subhead="Set one number — the minimum match. Only candidates above it can apply. Every one of them arrives ranked."
         primary={{ label: "Hire with CareerBridge", href: "/auth?mode=register&role=company" }}
         secondary={{ label: "See how ranking works", href: "#how-it-works" }}
         highlights={[
@@ -367,7 +366,7 @@ export default function HomePage() {
         tone="light"
         eyebrow="For administrators"
         headline="Keep the marketplace honest."
-        subhead="Verify companies, monitor activity, and manage users with clear controls and full visibility."
+        subhead="Verify every company before they post. Suspend anyone who breaks the rules. See every match, application, and hire in real time."
         primary={{ label: "Open admin console", href: "/auth?mode=register&role=admin" }}
         highlights={[
           {

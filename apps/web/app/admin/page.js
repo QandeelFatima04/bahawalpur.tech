@@ -5,6 +5,7 @@ import { friendlyError } from "@/lib/friendlyError";
 import { useTabState } from "@/lib/useTabState";
 import { RequireRole } from "@/components/RequireRole";
 import { DashboardShell } from "@/components/DashboardShell";
+import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, THead, TBody, Tr, Th, Td } from "@/components/ui/table";
 import { SkeletonTable } from "@/components/ui/skeleton";
-import { Users, Building2, Briefcase, CalendarClock } from "lucide-react";
+import {
+  Users,
+  Building2,
+  Briefcase,
+  CalendarClock,
+  LayoutDashboard,
+  GraduationCap,
+} from "lucide-react";
 
 function Toast({ message, onClear }) {
   useEffect(() => {
@@ -469,10 +477,21 @@ function InterviewsTab({ onToast }) {
 function AdminDashboard() {
   const [toast, setToast] = useState(null);
   const [tab, setTab] = useTabState("overview");
+  const navItems = [
+    { key: "overview", label: "Overview", icon: LayoutDashboard },
+    { key: "students", label: "Students", icon: GraduationCap },
+    { key: "companies", label: "Companies", icon: Building2 },
+    { key: "jobs", label: "Jobs", icon: Briefcase },
+    { key: "interviews", label: "Interviews", icon: CalendarClock },
+  ];
   return (
-    <DashboardShell title="Admin panel" subtitle="Platform-wide oversight and controls.">
+    <DashboardShell
+      title="Keep the marketplace honest."
+      subtitle="Verify companies, suspend bad actors, and see every interview, application, and hire as it happens."
+      nav={<DashboardSidebar items={navItems} activeKey={tab} onSelect={setTab} />}
+    >
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="lg:hidden">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="students">Students</TabsTrigger>
           <TabsTrigger value="companies">Companies</TabsTrigger>

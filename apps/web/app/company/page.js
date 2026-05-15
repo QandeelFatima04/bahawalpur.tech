@@ -5,6 +5,8 @@ import { friendlyError } from "@/lib/friendlyError";
 import { useTabState } from "@/lib/useTabState";
 import { RequireRole } from "@/components/RequireRole";
 import { DashboardShell } from "@/components/DashboardShell";
+import { DashboardSidebar } from "@/components/DashboardSidebar";
+import { LayoutDashboard, Briefcase, Users as UsersIcon, CalendarClock as CalendarClockIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1078,11 +1080,22 @@ function CompanyDashboard() {
     })();
   }, []);
 
+  const navItems = [
+    { key: "overview", label: "Overview", icon: LayoutDashboard },
+    { key: "jobs", label: "Open roles", icon: Briefcase },
+    { key: "applicants", label: "Your shortlist", icon: UsersIcon },
+    { key: "interviews", label: "Interviews", icon: CalendarClockIcon },
+  ];
+
   return (
-    <DashboardShell title="Company dashboard" subtitle="Post jobs, review applicants, and manage interviews.">
+    <DashboardShell
+      title="Hire from the top of the pile."
+      subtitle="Every applicant arrives pre-scored against your role. You read the top five, not the top five hundred."
+      nav={<DashboardSidebar items={navItems} activeKey={tab} onSelect={setTab} />}
+    >
       <StatusBanner me={me} />
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="lg:hidden">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
           <TabsTrigger value="applicants">Applicants</TabsTrigger>

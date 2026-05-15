@@ -1,21 +1,36 @@
+"use client";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 
-export function Card({ className, tone = "light", ...props }) {
+export function Card({ className, tone = "light", interactive = false, ...props }) {
+  const reduced = useReducedMotion();
   const toneClass =
-    tone === "dark"
-      ? "bg-surface-1 text-white"
-      : "bg-card text-foreground";
-  return (
-    <div
-      className={cn(
-        "rounded-xl p-6",
-        toneClass,
-        tone === "dark" ? "" : "ring-1 ring-black/[0.04]",
-        className
-      )}
-      {...props}
-    />
+    tone === "dark" ? "bg-surface-1 text-white" : "bg-card text-foreground";
+  const ringClass = tone === "dark" ? "" : "ring-1 ring-black/[0.04]";
+  const baseClass = cn(
+    "rounded-xl p-6 transition-shadow",
+    toneClass,
+    ringClass,
+    interactive && "cursor-pointer",
+    className
   );
+
+  if (interactive) {
+    return (
+      <motion.div
+        whileHover={reduced ? undefined : { y: -2 }}
+        whileTap={reduced ? undefined : { scale: 0.995 }}
+        transition={{ type: "spring", stiffness: 360, damping: 28 }}
+        className={cn(
+          baseClass,
+          "hover:shadow-card"
+        )}
+        {...props}
+      />
+    );
+  }
+
+  return <div className={baseClass} {...props} />;
 }
 
 export function CardHeader({ className, ...props }) {

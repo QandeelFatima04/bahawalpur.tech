@@ -217,12 +217,12 @@ function AuthPageInner() {
               CareerBridge AI
             </p>
             <h1 className="font-display text-[32px] font-semibold leading-[1.12] tracking-[-0.01em]">
-              {isRegister ? "Create your account" : "Welcome back"}
+              {isRegister ? "Open an account." : "Log in."}
             </h1>
             <p className="mx-auto mt-3 max-w-[360px] text-[15px] leading-[1.47] tracking-[-0.016em] text-muted-foreground">
               {isRegister
-                ? "Sign up as a student or company. We'll email you a link to verify."
-                : "Log in to access your dashboard."}
+                ? "One email. One link. You're in."
+                : "Your matches are waiting."}
             </p>
           </div>
 

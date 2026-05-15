@@ -40,15 +40,19 @@ const config = {
         // Accent = Apple Blue, reserved for interactive
         accent: "#0071e3",
         "accent-foreground": "#ffffff",
+        "accent-tint": "rgba(0, 113, 227, 0.06)",
         link: "#0066cc",
         "link-dark": "#2997ff",
         // Semantic
         destructive: "#d70015",
         "destructive-foreground": "#ffffff",
+        "destructive-tint": "rgba(215, 0, 21, 0.06)",
         success: "#1f883d",
         "success-foreground": "#ffffff",
+        "success-tint": "rgba(31, 136, 61, 0.08)",
         warn: "#b25000",
         "warn-foreground": "#ffffff",
+        "warn-tint": "rgba(178, 80, 0, 0.08)",
         // Dark surfaces from DESIGN.md
         onyx: "#1d1d1f",
         "surface-1": "#272729",
@@ -56,6 +60,24 @@ const config = {
         "surface-3": "#28282a",
         "surface-4": "#2a2a2d",
         "surface-5": "#242426",
+      },
+      spacing: {
+        4.5: "18px",
+        13: "52px",
+        18: "72px",
+      },
+      backgroundImage: {
+        "accent-fade":
+          "linear-gradient(180deg, rgba(0,113,227,0.24) 0%, rgba(0,113,227,0) 100%)",
+        "success-fade":
+          "linear-gradient(180deg, rgba(31,136,61,0.22) 0%, rgba(31,136,61,0) 100%)",
+        "warn-fade":
+          "linear-gradient(180deg, rgba(178,80,0,0.22) 0%, rgba(178,80,0,0) 100%)",
+        "destructive-fade":
+          "linear-gradient(180deg, rgba(215,0,21,0.22) 0%, rgba(215,0,21,0) 100%)",
+      },
+      transitionTimingFunction: {
+        "out-expo": "cubic-bezier(0.22, 1, 0.36, 1)",
       },
       borderRadius: {
         none: "0",
