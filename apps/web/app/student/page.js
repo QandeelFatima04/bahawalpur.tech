@@ -16,6 +16,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, THead, TBody, Tr, Th, Td } from "@/components/ui/table";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { JoinMeetingButton } from "@/components/JoinMeetingButton";
+import { SkillLearnLink } from "@/components/SkillLearnLink";
+import { StudentOverviewTab } from "./StudentOverviewTab";
 import { Upload, CheckCircle2, XCircle, Clock, Sparkles, Lock, EyeOff, CircleCheck, Circle, Pencil, Trash2 } from "lucide-react";
 
 function Chips({ items, onRemove, variant = "accent" }) {
@@ -808,7 +810,7 @@ function JobsTab({ onToast, profileVisible, hasProfile, onApplied }) {
           ) : (
             <div className="flex flex-wrap gap-1">
               {job.missing_skills.map((s) => (
-                <Badge key={s} variant="warn">{s}</Badge>
+                <SkillLearnLink key={s} skill={s} />
               ))}
             </div>
           )}
@@ -1159,7 +1161,7 @@ function OnboardingChecklist({ profile, hasApplied, onJump, onDismiss }) {
 function StudentDashboard() {
   const [profile, setProfile] = useState(null);
   const [toast, setToast] = useState(null);
-  const [tab, setTab] = useTabState("resume");
+  const [tab, setTab] = useTabState("overview");
   const [hasApplied, setHasApplied] = useState(false);
   const [checklistDismissed, setChecklistDismissed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -1214,6 +1216,7 @@ function StudentDashboard() {
       )}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="resume">Resume</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="report">Career report</TabsTrigger>
@@ -1221,6 +1224,9 @@ function StudentDashboard() {
           <TabsTrigger value="applications">Applications</TabsTrigger>
           <TabsTrigger value="interviews">Interviews</TabsTrigger>
         </TabsList>
+        <TabsContent value="overview">
+          <StudentOverviewTab onJump={setTab} onToast={setToast} />
+        </TabsContent>
         <TabsContent value="resume">
           <ResumeTab
             onToast={setToast}

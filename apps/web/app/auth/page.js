@@ -46,6 +46,21 @@ function AuthPageInner() {
     }
   }, [ready, isAuthenticated, userRole, router]);
 
+  // If the API layer cleared tokens with a one-shot message (e.g. admin disabled the
+  // account mid-session), surface it here on the login screen they were redirected to.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const msg = window.sessionStorage.getItem("cb_auth_message");
+      if (msg) {
+        setError(msg);
+        window.sessionStorage.removeItem("cb_auth_message");
+      }
+    } catch {
+      /* sessionStorage unavailable — skip */
+    }
+  }, []);
+
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   const submit = async (e) => {
@@ -79,6 +94,8 @@ function AuthPageInner() {
       // 403 with detail "email_unverified" → show resend UI
       if (err.status === 403 && err.body?.detail === "email_unverified") {
         setNeedsVerification({ email: form.email });
+      } else if (err.status === 403 && err.body?.detail === "account_disabled") {
+        setError("Your account has been disabled. Please contact the administrator.");
       } else {
         setError(err.message);
       }

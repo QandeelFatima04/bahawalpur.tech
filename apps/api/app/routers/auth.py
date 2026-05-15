@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
+from ..deps import is_account_disabled
 from ..models import Company, User, UserRole
 from ..schemas import (
     ForgotPasswordRequest,
@@ -194,6 +195,14 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
                 detail="email_unverified",
             )
 
+        # Block disabled accounts. Frontend keys on the "account_disabled" detail string
+        # to show the "contact the administrator" message.
+        if is_account_disabled(user, db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="account_disabled",
+            )
+
         try:
             return _issue_tokens(user)
         except Exception as exc:
@@ -224,6 +233,8 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
     # happen since we set verified=True permanently after the click).
     if not user.email_verified:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="email_unverified")
+    if is_account_disabled(user, db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="account_disabled")
     return _issue_tokens(user)
 
 
