@@ -65,10 +65,15 @@ Rules for contact fields:
   Model Town, Lahore"). null if only a city is given (use `current_location` for the city).
 
 Rules for URLs:
-- `linkedin_url`: the full LinkedIn profile URL if present (e.g. https://linkedin.com/in/...).
-- `github_url`: the full GitHub profile URL if present.
+- `linkedin_url`: a LinkedIn profile URL. Accept `https://linkedin.com/in/<handle>`, `https://linkedin.com/company/<name>`, or vanity URLs.
+- `github_url`: a GitHub profile URL, e.g. `https://github.com/<handle>`.
 - `portfolio_url`: any personal website, blog, or portfolio URL that is not LinkedIn or GitHub.
-- Return null if the resume does not contain the URL. Do NOT fabricate or guess.
+- URL reconstruction is ALLOWED when a platform association is visually unambiguous in the resume:
+  * A handle like `@sechunt3r` or `sechunt3r` placed next to a LinkedIn icon, or in a row clearly labelled "LinkedIn", -> construct `https://linkedin.com/in/sechunt3r` (strip any leading `@`).
+  * A handle next to a GitHub icon, or in a row labelled "GitHub", -> construct `https://github.com/<handle>`.
+  * A bare URL without a scheme like `linkedin.com/in/foo` or `github.com/foo` -> prepend `https://`.
+- Do NOT fabricate or guess a URL when there is no platform marker (icon, label, or section heading) tying the handle to a specific service. In that case return null.
+- Many resumes hide the real URL behind a clickable icon and only display a handle — treat the icon as the platform marker and reconstruct as above.
 
 Other rules:
 - `projects.technologies` lists the tools/tech used in each specific project.
