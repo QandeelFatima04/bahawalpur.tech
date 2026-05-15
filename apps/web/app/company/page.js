@@ -17,6 +17,7 @@ import { Table, THead, TBody, Tr, Th, Td } from "@/components/ui/table";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { JoinMeetingButton } from "@/components/JoinMeetingButton";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CompanyOverviewTab } from "./CompanyOverviewTab";
 import { CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
 
 function ScoreBadge({ score }) {
@@ -1043,7 +1044,7 @@ function StatusBanner({ me }) {
 
 function CompanyDashboard() {
   const [toast, setToast] = useState(null);
-  const [tab, setTab] = useTabState("jobs");
+  const [tab, setTab] = useTabState("overview");
   const [me, setMe] = useState(null);
 
   useEffect(() => {
@@ -1061,10 +1062,14 @@ function CompanyDashboard() {
       <StatusBanner me={me} />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
           <TabsTrigger value="applicants">Applicants</TabsTrigger>
           <TabsTrigger value="interviews">Interviews</TabsTrigger>
         </TabsList>
+        <TabsContent value="overview">
+          <CompanyOverviewTab onJump={setTab} onToast={setToast} />
+        </TabsContent>
         <TabsContent value="jobs">
           <JobsTab onToast={setToast} />
         </TabsContent>
