@@ -3,18 +3,20 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from ..models import CandidateProfile, Job, Match
-from .skills import normalize_skills
+from .skills import count_covered, distinct_count
 
 
 def _score(candidate: CandidateProfile, job: Job) -> dict:
-    candidate_skills = normalize_skills([s.name for s in candidate.skills])
-    job_skills = normalize_skills([s.name for s in job.skills])
-    overlap = len(candidate_skills.intersection(job_skills))
-    skill_score = (overlap / max(len(job_skills), 1)) * 100
+    job_skill_names = [s.name for s in job.skills]
+    candidate_skill_names = [s.name for s in candidate.skills]
 
-    project_tech = normalize_skills([tech for p in candidate.projects for tech in (p.technologies or [])])
-    project_overlap = len(project_tech.intersection(job_skills))
-    project_score = (project_overlap / max(len(job_skills), 1)) * 100
+    job_distinct = distinct_count(job_skill_names)
+    overlap = count_covered(job_skill_names, candidate_skill_names)
+    skill_score = (overlap / max(job_distinct, 1)) * 100
+
+    project_techs = [tech for p in candidate.projects for tech in (p.technologies or [])]
+    project_overlap = count_covered(job_skill_names, project_techs)
+    project_score = (project_overlap / max(job_distinct, 1)) * 100
 
     education_score = 100 if candidate.degree else 50
     experience_score = min(candidate.experience_years / 2.0, 1.0) * 100

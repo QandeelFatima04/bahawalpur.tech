@@ -52,6 +52,7 @@ from ..schemas import (
 from ..services import email as email_service
 from ..services.ai import generate_job_description
 from ..services.matching import recompute_for_job
+from ..services.skills import clean_skill_input
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -146,7 +147,7 @@ def create_job(
     )
     db.add(job)
     db.flush()
-    for skill in sorted({s.strip() for s in payload.required_skills if s.strip()}):
+    for skill in sorted({clean_skill_input(s) for s in payload.required_skills if clean_skill_input(s)}):
         db.add(JobSkill(job_id=job.id, name=skill))
     db.commit()
     db.refresh(job)
@@ -277,7 +278,7 @@ def update_job(
         job.hiring_limit = payload.hiring_limit if payload.hiring_limit > 0 else None
     if payload.required_skills is not None:
         job.skills.clear()
-        for skill in sorted({s.strip() for s in payload.required_skills if s.strip()}):
+        for skill in sorted({clean_skill_input(s) for s in payload.required_skills if clean_skill_input(s)}):
             db.add(JobSkill(job_id=job.id, name=skill))
         skills_changed = True
     if payload.extra is not None:

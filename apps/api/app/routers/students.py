@@ -41,7 +41,7 @@ from ..schemas import (
 from ..services import email as email_service
 from ..services.ai import generate_career_report, parse_resume
 from ..services.matching import recompute_for_job
-from ..services.skills import normalize_skill, normalize_skills
+from ..services.skills import clean_skill_input, skill_is_covered
 from ..services.storage import upload_resume
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -119,7 +119,7 @@ def upsert_profile(
     profile.portfolio_url = payload.portfolio_url
     profile.skills.clear()
     profile.projects.clear()
-    for skill in sorted({s.strip() for s in payload.skills if s.strip()}):
+    for skill in sorted({clean_skill_input(s) for s in payload.skills if clean_skill_input(s)}):
         profile.skills.append(CandidateSkill(name=skill))
     for project in payload.projects:
         profile.projects.append(
@@ -212,7 +212,7 @@ def _process_resume_task(resume_id: int, file_bytes: bytes, filename: str, conte
                 profile.github_url = parsed.get("github_url") or profile.github_url
                 profile.portfolio_url = parsed.get("portfolio_url") or profile.portfolio_url
                 profile.skills.clear()
-                for s in sorted({skill.strip() for skill in parsed.get("skills", []) if skill.strip()}):
+                for s in sorted({clean_skill_input(skill) for skill in parsed.get("skills", []) if clean_skill_input(skill)}):
                     profile.skills.append(CandidateSkill(name=s))
                 profile.projects.clear()
                 for project in parsed.get("projects", []):
@@ -369,7 +369,7 @@ def browse_jobs(
         .all()
     }
 
-    candidate_skills_norm = normalize_skills([s.name for s in profile.skills])
+    candidate_skill_names = [s.name for s in profile.skills]
 
     output: list[StudentJobRow] = []
     for job, company in rows:
@@ -380,7 +380,7 @@ def browse_jobs(
         total = m.total_score if m else 0.0
         if min_score is not None and total < min_score:
             continue
-        missing = [s for s in skill_names if normalize_skill(s) not in candidate_skills_norm]
+        missing = [s for s in skill_names if not skill_is_covered(s, candidate_skill_names)]
         output.append(
             StudentJobRow(
                 id=job.id,
