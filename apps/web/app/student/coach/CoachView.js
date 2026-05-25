@@ -323,8 +323,15 @@ export default function CoachView() {
   );
 
   // ── VAD (always called; controlled via start/pause) ──
+  // Asset paths are pinned to "/" because the Dockerfile copies
+  // silero_vad.onnx, vad.worklet.bundle.min.js, and ort-wasm*.wasm into /public.
+  // Without explicit paths, vad-web guesses paths that break under Next.js.
   const vad = useMicVAD({
     startOnLoad: false,
+    baseAssetPath: "/",
+    onnxWASMBasePath: "/",
+    modelURL: "/silero_vad.onnx",
+    workletURL: "/vad.worklet.bundle.min.js",
     onSpeechStart: () => setVadState("speech_start"),
     onSpeechEnd: (audio) => {
       vadRef.current?.pause();
@@ -430,8 +437,8 @@ export default function CoachView() {
             exit={{ opacity: 0, height: 0 }}
             className="border-t border-border bg-muted/40"
           >
-            <VoiceStateOverlay state={vadState} userSpeaking={vad.userSpeaking} />
-            {vad.errored && (
+            <VoiceStateOverlay state={vadState} userSpeaking={vad?.userSpeaking} />
+            {vad?.errored && (
               <p className="pb-2 text-center text-[12px] text-red-500">
                 Microphone unavailable — using text input
               </p>
@@ -468,7 +475,7 @@ export default function CoachView() {
           <button
             type="button"
             onClick={toggleVoiceMode}
-            disabled={!!vad.errored}
+            disabled={!!vad?.errored}
             title={voiceMode ? "Stop voice mode" : "Start voice mode"}
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${
               voiceMode

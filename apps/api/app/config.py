@@ -15,12 +15,15 @@ class Settings(BaseSettings):
     # they left off without re-entering credentials.
     access_token_minutes: int = 60 * 24
     refresh_token_minutes: int = 60 * 24 * 30
+    # OpenAI direct (used for Whisper STT + gpt-4o-mini TTS — OpenRouter does
+    # not implement the /audio/transcriptions or /audio/speech endpoints).
     openai_api_key: str | None = None
+    openai_stt_model: str = "whisper-1"
+    openai_tts_model: str = "gpt-4o-mini-tts"
+    # OpenRouter (used only for chat completions).
     openrouter_api_key: str | None = None
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_chat_model: str = "google/gemini-3.5-flash"
-    openrouter_whisper_model: str = "openai/whisper-large-v3-turbo"
-    openrouter_tts_model: str = "openai/gpt-4o-mini-tts-2025-12-15"
+    openrouter_chat_model: str = "google/gemini-2.5-flash"
     aws_region: str = "ap-south-1"
     s3_bucket: str = "careerbridge-private"
     max_upload_size_mb: int = 5

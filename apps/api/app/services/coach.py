@@ -72,12 +72,21 @@ def build_system_prompt(
 
 
 def _openrouter_client() -> OpenAI:
+    """Client for chat completions. Routes to OpenRouter."""
     if not settings.openrouter_api_key:
         raise RuntimeError("OPENROUTER_API_KEY is required for the coach feature")
     return OpenAI(
         api_key=settings.openrouter_api_key,
         base_url=settings.openrouter_base_url,
     )
+
+
+def _openai_client() -> OpenAI:
+    """Client for STT + TTS. Hits api.openai.com directly because OpenRouter
+    does not implement the /audio/transcriptions or /audio/speech endpoints."""
+    if not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required for voice (STT/TTS) features")
+    return OpenAI(api_key=settings.openai_api_key)
 
 
 def stream_reply(messages: list[dict], system_prompt: str) -> Generator[str, None, None]:
@@ -101,22 +110,22 @@ def stream_reply(messages: list[dict], system_prompt: str) -> Generator[str, Non
 
 
 def transcribe_audio(file_bytes: bytes, filename: str, content_type: str) -> str:
-    """Return transcribed text from Whisper via OpenRouter."""
-    client = _openrouter_client()
+    """Return transcribed text from Whisper (OpenAI direct)."""
+    client = _openai_client()
     transcript = client.audio.transcriptions.create(
-        model=settings.openrouter_whisper_model,
+        model=settings.openai_stt_model,
         file=(filename, file_bytes, content_type),
         response_format="text",
     )
-    # OpenRouter returns the transcript as the string directly
+    # OpenAI returns the transcript as the string directly when response_format="text"
     return transcript if isinstance(transcript, str) else transcript.text
 
 
 def synthesize_speech(text: str) -> bytes:
-    """Return raw MP3 bytes from gpt-4o-mini-tts via OpenRouter."""
-    client = _openrouter_client()
+    """Return raw MP3 bytes from gpt-4o-mini-tts (OpenAI direct)."""
+    client = _openai_client()
     response = client.audio.speech.create(
-        model=settings.openrouter_tts_model,
+        model=settings.openai_tts_model,
         voice="alloy",
         input=text,
         response_format="mp3",
