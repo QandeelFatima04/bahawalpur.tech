@@ -289,3 +289,28 @@ class AiGenerationLog(Base):
     tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class CoachConversation(Base):
+    __tablename__ = "coach_conversations"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    messages = relationship(
+        "CoachMessage",
+        back_populates="conversation",
+        order_by="CoachMessage.id",
+        cascade="all, delete-orphan",
+    )
+
+
+class CoachMessage(Base):
+    __tablename__ = "coach_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("coach_conversations.id"), nullable=False, index=True)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" | "assistant"
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    conversation = relationship("CoachConversation", back_populates="messages")

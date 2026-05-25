@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     access_token_minutes: int = 60 * 24
     refresh_token_minutes: int = 60 * 24 * 30
     openai_api_key: str | None = None
+    openrouter_api_key: str | None = None
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_chat_model: str = "google/gemini-3.5-flash"
+    openrouter_whisper_model: str = "openai/whisper-large-v3-turbo"
+    openrouter_tts_model: str = "openai/gpt-4o-mini-tts-2025-12-15"
     aws_region: str = "ap-south-1"
     s3_bucket: str = "careerbridge-private"
     max_upload_size_mb: int = 5

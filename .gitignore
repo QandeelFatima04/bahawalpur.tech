@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 .venv/
 __pycache__/
 *.pyc
@@ -9,6 +8,3 @@ node_modules/
 .env
 dist/
 apps/api/logs/
-=======
-node_modules/ 
->>>>>>> be380b82 (Changing on edit button on student portal, Processing bar)

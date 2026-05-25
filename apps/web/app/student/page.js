@@ -17,6 +17,7 @@ import {
   Send as SendIcon,
   CalendarClock as CalendarClockIcon,
   BarChart3,
+  MessageSquare,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1246,6 +1247,7 @@ function StudentDashboard() {
     { key: "applications", label: "Applications", icon: SendIcon },
     { key: "interviews", label: "Interviews", icon: CalendarClockIcon },
     { key: "insights", label: "Insights", icon: BarChart3, href: "/student/insights" },
+    { key: "coach", label: "Coach", icon: MessageSquare, href: "/student/coach" },
   ];
 
   return (
