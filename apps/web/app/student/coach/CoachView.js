@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useMicVAD } from "@ricky0123/vad-web";
 import {
   BotMessageSquare,
   Mic,
@@ -15,6 +14,63 @@ import { api } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 const TOKEN_KEY = "cb_token";
+
+// useMicVAD — wraps MicVAD from vad-web (vad-react not installed)
+function useMicVAD(options) {
+  const [userSpeaking, setUserSpeaking] = useState(false);
+  const [errored, setErrored] = useState(false);
+  const instanceRef = useRef(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  useEffect(() => {
+    let destroyed = false;
+    import("@ricky0123/vad-web").then(({ MicVAD }) => {
+      MicVAD.new({
+        startOnLoad: false,
+        baseAssetPath: optionsRef.current.baseAssetPath,
+        onnxWASMBasePath: optionsRef.current.onnxWASMBasePath,
+        modelURL: optionsRef.current.modelURL,
+        workletURL: optionsRef.current.workletURL,
+        onSpeechStart: () => {
+          setUserSpeaking(true);
+          optionsRef.current.onSpeechStart?.();
+        },
+        onSpeechEnd: (audio) => {
+          setUserSpeaking(false);
+          optionsRef.current.onSpeechEnd?.(audio);
+        },
+        onVADMisfire: () => {
+          setUserSpeaking(false);
+          optionsRef.current.onVADMisfire?.();
+        },
+        positiveSpeechThreshold: optionsRef.current.positiveSpeechThreshold,
+        negativeSpeechThreshold: optionsRef.current.negativeSpeechThreshold,
+        preSpeechPadFrames: optionsRef.current.preSpeechPadFrames,
+        redemptionFrames: optionsRef.current.redemptionFrames,
+      }).then((inst) => {
+        if (!destroyed) instanceRef.current = inst;
+      }).catch(() => {
+        if (!destroyed) setErrored(true);
+      });
+    }).catch(() => {
+      if (!destroyed) setErrored(true);
+    });
+
+    return () => {
+      destroyed = true;
+      instanceRef.current?.destroy?.();
+      instanceRef.current = null;
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return {
+    start: () => instanceRef.current?.start(),
+    pause: () => instanceRef.current?.pause(),
+    userSpeaking,
+    errored,
+  };
+}
 
 // ── WAV encoding ──────────────────────────────────────────────────────────────
 function float32ToWav(samples, sampleRate = 16000) {
