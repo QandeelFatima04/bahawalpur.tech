@@ -11,10 +11,22 @@
  * /student/coach route.
  */
 import dynamic from "next/dynamic";
+import {
+  LayoutDashboard,
+  FileText as FileTextIcon,
+  UserCircle,
+  Sparkles as SparklesIcon,
+  Briefcase,
+  Send as SendIcon,
+  CalendarClock as CalendarClockIcon,
+  BarChart3,
+  MessageSquare,
+  BotMessageSquare,
+} from "lucide-react";
 import { DashboardShell } from "@/components/DashboardShell";
+import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { RequireRole } from "@/components/RequireRole";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { BotMessageSquare } from "lucide-react";
 
 const CoachView = dynamic(() => import("./CoachView"), {
   ssr: false,
@@ -52,12 +64,29 @@ function CoachFallback(error, reset) {
   );
 }
 
+// Mirror the nav items from apps/web/app/student/page.js.
+// Tabs that are local state on /student use href:"/student" so clicking them
+// navigates back to the dashboard (which opens on the default/overview tab).
+// Insights and Coach keep their own dedicated routes.
+const NAV_ITEMS = [
+  { key: "overview",      label: "Overview",      icon: LayoutDashboard,    href: "/student" },
+  { key: "resume",        label: "CV",            icon: FileTextIcon,       href: "/student" },
+  { key: "profile",       label: "Profile",       icon: UserCircle,         href: "/student" },
+  { key: "report",        label: "Career report", icon: SparklesIcon,       href: "/student" },
+  { key: "jobs",          label: "Jobs",          icon: Briefcase,          href: "/student" },
+  { key: "applications",  label: "Applications",  icon: SendIcon,           href: "/student" },
+  { key: "interviews",    label: "Interviews",    icon: CalendarClockIcon,  href: "/student" },
+  { key: "insights",      label: "Insights",      icon: BarChart3,          href: "/student/insights" },
+  { key: "coach",         label: "Coach",         icon: MessageSquare,      href: "/student/coach" },
+];
+
 export default function CoachPage() {
   return (
     <RequireRole role="student">
       <DashboardShell
         title="Career Coach"
         subtitle="Your personal AI advisor — ask about jobs, skills, or anything career-related."
+        nav={<DashboardSidebar items={NAV_ITEMS} activeKey="coach" />}
       >
         <ErrorBoundary fallback={CoachFallback}>
           <CoachView />
