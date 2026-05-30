@@ -5,12 +5,14 @@ const API_PREFIXES = ["auth", "students", "companies", "matches", "admin", "heal
 
 const nextConfig = {
   reactStrictMode: true,
+  // Next.js 16 uses Turbopack by default. Turbopack handles WASM natively so
+  // no extra config is needed. The empty object silences the "webpack config
+  // present but no turbopack config" build error.
+  turbopack: {},
+  // Kept for explicit --webpack builds: enables async WebAssembly so
+  // onnxruntime-web (used by @ricky0123/vad-web) bundles correctly.
   webpack(config, { isServer }) {
     if (!isServer) {
-      // onnxruntime-web (pulled in by @ricky0123/vad-web) ships WASM that
-      // webpack 5 must handle with async WebAssembly support enabled.
-      // Without this the CoachView chunk fails to load and the browser shows
-      // "This page couldn't load" before React's ErrorBoundary can catch it.
       config.experiments = { ...config.experiments, asyncWebAssembly: true };
       config.resolve.fallback = { ...config.resolve.fallback, fs: false };
     }
