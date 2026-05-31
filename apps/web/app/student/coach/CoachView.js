@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BotMessageSquare,
+  Loader2,
   Mic,
   MicOff,
   Send,
+  Square,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -105,8 +107,9 @@ function authToken() {
 }
 
 // ── Message bubble ────────────────────────────────────────────────────────────
-function MessageBubble({ role, content, streaming }) {
+function MessageBubble({ role, content, streaming, ttsEnabled, playing, loading, onPlay }) {
   const isUser = role === "user";
+  const showPlay = !isUser && !streaming && content.trim().length > 0;
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -129,6 +132,32 @@ function MessageBubble({ role, content, streaming }) {
         {content}
         {streaming && (
           <span className="ml-1 inline-block h-3 w-0.5 animate-pulse rounded-full bg-current opacity-60" />
+        )}
+        {showPlay && (
+          <button
+            type="button"
+            onClick={onPlay}
+            disabled={!ttsEnabled}
+            title={
+              !ttsEnabled
+                ? "Voice replies are muted"
+                : playing
+                ? "Stop"
+                : "Listen to this reply"
+            }
+            className={`mt-2 flex items-center gap-1.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+              playing ? "text-blue-600" : "text-muted-foreground hover:text-blue-600"
+            }`}
+          >
+            {loading ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : playing ? (
+              <Square size={12} className="fill-current" />
+            ) : (
+              <Volume2 size={13} />
+            )}
+            {loading ? "Loading…" : playing ? "Stop" : "Listen"}
+          </button>
         )}
       </div>
     </motion.div>
@@ -179,6 +208,10 @@ export default function CoachView() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [vadState, setVadState] = useState("idle");
   const [ttsEnabled, setTtsEnabled] = useState(true);
+  // Which assistant message is currently playing aloud, and whether its audio
+  // is still being fetched ("loading") vs actively playing.
+  const [playingId, setPlayingId] = useState(null);
+  const [playingLoading, setPlayingLoading] = useState(false);
 
   const messagesEndRef = useRef(null);
   const currentAudioRef = useRef(null);
@@ -237,8 +270,10 @@ export default function CoachView() {
   }, []);
 
   // ── play TTS ──
+  // onAudioReady fires once the audio actually starts (used to flip a
+  // per-message button from "Loading…" to "Stop").
   const playTTS = useCallback(
-    async (text) => {
+    async (text, onAudioReady) => {
       if (!ttsEnabled || !text.trim()) return;
       stopAudio();
       setVadState("speaking");
@@ -257,9 +292,21 @@ export default function CoachView() {
         const audio = new Audio(url);
         currentAudioRef.current = audio;
         await new Promise((resolve) => {
-          audio.onended = resolve;
-          audio.onerror = resolve;
-          audio.play().catch(resolve);
+          let done = false;
+          const finish = () => {
+            if (!done) {
+              done = true;
+              resolve();
+            }
+          };
+          // ended/error end playback naturally; pause fires when stopAudio()
+          // pauses the element (e.g. user clicked Stop) — without this the
+          // promise would hang forever on a manual stop.
+          audio.onended = finish;
+          audio.onerror = finish;
+          audio.onpause = finish;
+          audio.onplaying = () => onAudioReady?.();
+          audio.play().catch(finish);
         });
         URL.revokeObjectURL(url);
         currentAudioRef.current = null;
@@ -270,6 +317,42 @@ export default function CoachView() {
     },
     [ttsEnabled, stopAudio]
   );
+
+  // ── play a single message on demand (per-bubble Listen button) ──
+  const playMessage = useCallback(
+    async (id, text) => {
+      if (!ttsEnabled || !text.trim()) return;
+      // Clicking the message that's already playing → stop it.
+      if (playingId === id) {
+        stopAudio();
+        setPlayingId(null);
+        setPlayingLoading(false);
+        setVadState("idle");
+        return;
+      }
+      setPlayingId(id);
+      setPlayingLoading(true);
+      try {
+        await playTTS(text, () => setPlayingLoading(false));
+      } finally {
+        setPlayingId((cur) => (cur === id ? null : cur));
+        setPlayingLoading(false);
+      }
+    },
+    [ttsEnabled, playingId, stopAudio, playTTS]
+  );
+
+  // ── mute toggle (bottom speaker button) ──
+  const toggleTts = useCallback(() => {
+    if (ttsEnabled) {
+      // Muting: silence anything currently playing.
+      stopAudio();
+      setPlayingId(null);
+      setPlayingLoading(false);
+      setVadState("idle");
+    }
+    setTtsEnabled((v) => !v);
+  }, [ttsEnabled, stopAudio]);
 
   // ── send message via SSE ──
   const sendMessage = useCallback(
@@ -477,7 +560,16 @@ export default function CoachView() {
 
         <AnimatePresence initial={false}>
           {messages.map((m) => (
-            <MessageBubble key={m.id} role={m.role} content={m.content} streaming={m.streaming} />
+            <MessageBubble
+              key={m.id}
+              role={m.role}
+              content={m.content}
+              streaming={m.streaming}
+              ttsEnabled={ttsEnabled}
+              playing={playingId === m.id}
+              loading={playingId === m.id && playingLoading}
+              onPlay={() => playMessage(m.id, m.content)}
+            />
           ))}
         </AnimatePresence>
         <div ref={messagesEndRef} />
@@ -520,7 +612,7 @@ export default function CoachView() {
           {/* TTS mute */}
           <button
             type="button"
-            onClick={() => setTtsEnabled((v) => !v)}
+            onClick={toggleTts}
             title={ttsEnabled ? "Mute voice replies" : "Unmute voice replies"}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
