@@ -38,11 +38,12 @@ if (existsSync(vadDist)) {
   }
 }
 
-// ort-wasm*.wasm files
+// ort-wasm*.wasm binaries AND their .mjs glue loaders (ORT 1.17+ splits the
+// loader into ort-wasm-simd-threaded.mjs etc; without it the runtime 404s).
 const onnxDist = resolve(root, "node_modules/onnxruntime-web/dist");
 if (existsSync(onnxDist)) {
   for (const file of readdirSync(onnxDist)) {
-    if (file.endsWith(".wasm")) {
+    if (file.endsWith(".wasm") || file.endsWith(".mjs")) {
       copy(resolve(onnxDist, file), resolve(pub, file));
     }
   }
