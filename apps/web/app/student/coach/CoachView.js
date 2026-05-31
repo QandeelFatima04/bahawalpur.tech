@@ -380,13 +380,13 @@ export default function CoachView() {
 
   // ── VAD (always called; controlled via start/pause) ──
   // Asset paths are pinned to "/" because the Dockerfile copies
-  // silero_vad.onnx, vad.worklet.bundle.min.js, and ort-wasm*.wasm into /public.
-  // Without explicit paths, vad-web guesses paths that break under Next.js.
+  // silero_vad_legacy.onnx, vad.worklet.bundle.min.js, and ort-wasm*.wasm into
+  // /public. vad-web derives the model filename from baseAssetPath + the model
+  // name (default "legacy" → /silero_vad_legacy.onnx), so modelURL is omitted.
   const vad = useMicVAD({
     startOnLoad: false,
     baseAssetPath: "/",
     onnxWASMBasePath: "/",
-    modelURL: "/silero_vad.onnx",
     workletURL: "/vad.worklet.bundle.min.js",
     onSpeechStart: () => setVadState("speech_start"),
     onSpeechEnd: (audio) => {

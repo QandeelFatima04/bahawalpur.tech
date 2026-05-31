@@ -3,7 +3,7 @@
  * so Next.js serves them at the site root.
  *
  * useMicVAD is configured with:
- *   baseAssetPath: "/"      → looks for /silero_vad.onnx, /vad.worklet.bundle.min.js
+ *   baseAssetPath: "/"      → looks for /silero_vad_legacy.onnx, /vad.worklet.bundle.min.js
  *   onnxWASMBasePath: "/"   → looks for /ort-wasm*.wasm
  *
  * The Dockerfile already runs this as a shell one-liner; this script makes the

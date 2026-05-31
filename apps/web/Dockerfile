@@ -4,7 +4,7 @@ COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 # Copy VAD runtime assets into /public so @ricky0123/vad-web can fetch
-# /silero_vad.onnx, /vad.worklet.bundle.min.js, /ort-wasm*.wasm at the site root.
+# /silero_vad_legacy.onnx, /vad.worklet.bundle.min.js, /ort-wasm*.wasm at the site root.
 # Without these the useMicVAD hook fails synchronously at render time, which
 # tears down the React tree and surfaces as a network-level page-load error.
 RUN mkdir -p public && \
