@@ -21,22 +21,24 @@ export function DialogContent({ className, children, ...props }) {
         transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
         className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
       />
-      <MotionContent
-        initial={{ opacity: 0, scale: 0.96, y: 4 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.98, y: 2 }}
-        transition={{ type: "spring", stiffness: 360, damping: 32 }}
-        className={cn(
-          "fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl bg-card shadow-[0_30px_60px_rgba(0,0,0,0.24)] focus:outline-none",
-          className
-        )}
-        {...props}
-      >
-        <div className="overflow-y-auto p-8">{children}</div>
-        <DialogPrimitive.Close className="absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-pill text-[rgba(0,0,0,0.48)] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-foreground">
-          <X size={16} />
-        </DialogPrimitive.Close>
-      </MotionContent>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <MotionContent
+          initial={{ opacity: 0, scale: 0.96, y: 4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.98, y: 2 }}
+          transition={{ type: "spring", stiffness: 360, damping: 32 }}
+          className={cn(
+            "relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl bg-card shadow-[0_30px_60px_rgba(0,0,0,0.24)] focus:outline-none",
+            className
+          )}
+          {...props}
+        >
+          <div className="overflow-y-auto p-8">{children}</div>
+          <DialogPrimitive.Close className="absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-pill text-[rgba(0,0,0,0.48)] transition-colors hover:bg-[rgba(0,0,0,0.06)] hover:text-foreground">
+            <X size={16} />
+          </DialogPrimitive.Close>
+        </MotionContent>
+      </div>
     </DialogPrimitive.Portal>
   );
 }
