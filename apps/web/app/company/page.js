@@ -112,7 +112,7 @@ function normalizeExperienceLevel(value) {
   return "entry";
 }
 
-function JobForm({ initial, onSubmit, onCancel, onToast }) {
+function JobForm({ initial, onSubmit, onCancel, onToast, submitting }) {
   const [form, setForm] = useState({
     title: initial?.title || "",
     required_skills: initial?.required_skills || [],
@@ -364,8 +364,12 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
         </div>
       )}
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button type="submit">{initial ? "Save changes" : "Create job"}</Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>Cancel</Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting
+            ? (initial ? "Saving…" : "Creating…")
+            : (initial ? "Save changes" : "Create job")}
+        </Button>
       </DialogFooter>
     </form>
   );
@@ -375,7 +379,9 @@ function JobsTab({ onToast }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [createBusy, setCreateBusy] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [editBusy, setEditBusy] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [filter, setFilter] = useState("all");
@@ -394,6 +400,7 @@ function JobsTab({ onToast }) {
   useEffect(() => { load(); }, [load]);
 
   const create = async (form) => {
+    setCreateBusy(true);
     try {
       await api("/companies/jobs", { method: "POST", body: JSON.stringify(form) });
       onToast("Job created");
@@ -401,10 +408,13 @@ function JobsTab({ onToast }) {
       load();
     } catch (err) {
       onToast(friendlyError(err));
+    } finally {
+      setCreateBusy(false);
     }
   };
 
   const save = async (form) => {
+    setEditBusy(true);
     try {
       await api(`/companies/jobs/${editing.id}`, { method: "PATCH", body: JSON.stringify(form) });
       onToast("Job updated");
@@ -412,12 +422,16 @@ function JobsTab({ onToast }) {
       load();
     } catch (err) {
       onToast(friendlyError(err));
+    } finally {
+      setEditBusy(false);
     }
   };
 
+  const STATUS_LABELS = { active: "Active", paused: "Paused", inactive: "Closed" };
   const setStatus = async (job, next) => {
     try {
       await api(`/companies/jobs/${job.id}`, { method: "PATCH", body: JSON.stringify({ status: next }) });
+      onToast(`"${job.title}" marked ${STATUS_LABELS[next] || next}`);
       load();
     } catch (err) {
       onToast(friendlyError(err));
@@ -455,7 +469,7 @@ function JobsTab({ onToast }) {
               <DialogTitle>Post a new job</DialogTitle>
               <DialogDescription>Post a new role for candidates to discover and apply to.</DialogDescription>
             </DialogHeader>
-            <JobForm onSubmit={create} onCancel={() => setCreating(false)} onToast={onToast} />
+            <JobForm onSubmit={create} onCancel={() => setCreating(false)} onToast={onToast} submitting={createBusy} />
           </DialogContent>
         </Dialog>
       </CardHeader>
@@ -502,7 +516,9 @@ function JobsTab({ onToast }) {
                 .map((j) => {
                 const limitReached = j.hiring_limit != null && j.hires_count >= j.hiring_limit;
                 const statusVariant =
-                  j.status === "active" ? "success" : j.status === "paused" ? "warn" : "default";
+                  j.status === "active" ? "success" :
+                  j.status === "paused" ? "warn" :
+                  limitReached ? "success" : "default";
                 const statusLabel =
                   j.status === "active" ? "Active" :
                   j.status === "paused" ? "Paused" :
@@ -575,7 +591,7 @@ function JobsTab({ onToast }) {
             <DialogTitle>Edit job</DialogTitle>
             <DialogDescription>Update the details and settings for this job listing.</DialogDescription>
           </DialogHeader>
-          {editing && <JobForm initial={editing} onSubmit={save} onCancel={() => setEditing(null)} onToast={onToast} />}
+          {editing && <JobForm initial={editing} onSubmit={save} onCancel={() => setEditing(null)} onToast={onToast} submitting={editBusy} />}
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(deleting)} onOpenChange={(v) => !v && !deleteBusy && setDeleting(null)}>
