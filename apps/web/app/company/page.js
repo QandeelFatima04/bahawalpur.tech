@@ -19,7 +19,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, THead, TBody, Tr, Th, Td } from "@/components/ui/table";
 import { SkeletonTable } from "@/components/ui/skeleton";
 import { JoinMeetingButton } from "@/components/JoinMeetingButton";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { CompanyOverviewTab } from "./CompanyOverviewTab";
 import { CheckCircle2, XCircle, Clock, AlertTriangle } from "lucide-react";
 
@@ -453,6 +453,7 @@ function JobsTab({ onToast }) {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Post a new job</DialogTitle>
+              <DialogDescription>Post a new role for candidates to discover and apply to.</DialogDescription>
             </DialogHeader>
             <JobForm onSubmit={create} onCancel={() => setCreating(false)} onToast={onToast} />
           </DialogContent>
@@ -572,6 +573,7 @@ function JobsTab({ onToast }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit job</DialogTitle>
+            <DialogDescription>Update the details and settings for this job listing.</DialogDescription>
           </DialogHeader>
           {editing && <JobForm initial={editing} onSubmit={save} onCancel={() => setEditing(null)} onToast={onToast} />}
         </DialogContent>
@@ -580,6 +582,7 @@ function JobsTab({ onToast }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete this job role?</DialogTitle>
+            <DialogDescription>This action is permanent and cannot be undone.</DialogDescription>
           </DialogHeader>
           {deleting && (
             <div className="space-y-3 text-sm">
@@ -770,6 +773,7 @@ function ApplicantsTab({ onToast }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Send interview request</DialogTitle>
+            <DialogDescription>Pick a date and time to send the candidate an interview invitation.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">
@@ -975,6 +979,7 @@ function InterviewsTab({ onToast }) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reschedule interview</DialogTitle>
+            <DialogDescription>Choose a new date and time to update this interview.</DialogDescription>
           </DialogHeader>
           {rescheduling && (
             <div className="space-y-3 text-sm">
