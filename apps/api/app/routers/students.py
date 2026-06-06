@@ -1,7 +1,7 @@
 import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
@@ -43,6 +43,7 @@ from ..services.ai import generate_career_report, parse_resume
 from ..services.matching import recompute_for_job
 from ..services.skills import clean_skill_input, skill_is_covered
 from ..services.storage import upload_resume
+from ..services.turnstile import verify_turnstile
 
 router = APIRouter(prefix="/students", tags=["students"])
 settings = get_settings()
@@ -260,9 +261,11 @@ def _process_resume_task(resume_id: int, file_bytes: bytes, filename: str, conte
 def upload_resume_endpoint(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    cf_turnstile_response: str | None = Form(None),
     user: User = Depends(require_role(UserRole.student)),
     db: Session = Depends(get_db),
 ):
+    verify_turnstile(cf_turnstile_response)
     ext = "." + file.filename.split(".")[-1].lower() if "." in file.filename else ""
     allowed = {x.strip().lower() for x in settings.allowed_resume_extensions.split(",")}
     if ext not in allowed:

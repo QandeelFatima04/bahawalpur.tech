@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Shared secret required in the X-Cron-Secret header for /internal/* endpoints.
     # Set in apps/api/.env.docker; never committed.
     internal_cron_secret: str | None = None
+    # Cloudflare Turnstile secret key. When unset, captcha verification is skipped
+    # (local dev / tests). Set in apps/api/.env.docker in production; never committed.
+    turnstile_secret_key: str | None = None
 
 
 @lru_cache

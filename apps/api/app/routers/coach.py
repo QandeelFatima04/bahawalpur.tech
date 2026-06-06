@@ -21,6 +21,7 @@ from ..models import (
     UserRole,
 )
 from ..services.coach import build_system_prompt, stream_reply, synthesize_speech, transcribe_audio
+from ..services.turnstile import verify_turnstile
 
 router = APIRouter(prefix="/students", tags=["coach"])
 
@@ -43,6 +44,10 @@ class MessageOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CreateConversationRequest(BaseModel):
+    turnstile_token: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -103,9 +108,11 @@ def _get_conversation(db: Session, conv_id: int, user: User) -> CoachConversatio
 
 @router.post("/me/coach/conversations", response_model=ConversationOut, status_code=201)
 def create_conversation(
+    payload: CreateConversationRequest | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(require_role(UserRole.student)),
 ):
+    verify_turnstile(payload.turnstile_token if payload else None)
     conv = CoachConversation(user_id=user.id, created_at=datetime.utcnow())
     db.add(conv)
     db.commit()

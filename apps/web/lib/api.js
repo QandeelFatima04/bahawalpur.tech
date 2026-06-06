@@ -136,6 +136,10 @@ export async function uploadFile(path, file, options = {}) {
   const sendUpload = async (tokenVal) => {
     const form = new FormData();
     form.append("file", file);
+    // Extra multipart fields (e.g. cf_turnstile_response for the Turnstile check).
+    for (const [k, v] of Object.entries(options.fields || {})) {
+      if (v != null) form.append(k, v);
+    }
     return fetch(`${API_BASE}${path}`, {
       method: "POST",
       body: form,

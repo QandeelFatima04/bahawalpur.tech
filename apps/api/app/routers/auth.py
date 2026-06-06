@@ -23,6 +23,7 @@ from ..schemas import (
 )
 from ..security import create_token, hash_password, verify_password, decode_token
 from ..services import email as email_service
+from ..services.turnstile import verify_turnstile
 
 logger = logging.getLogger("careerbridge")
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -59,6 +60,7 @@ def _send_verification(user: User, db: Session) -> None:
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    verify_turnstile(payload.turnstile_token)
     exists = db.query(User).filter(User.email == payload.email).first()
     if exists:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
@@ -137,6 +139,7 @@ def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
 
 @router.post("/resend-verification", status_code=status.HTTP_202_ACCEPTED)
 def resend_verification(payload: ResendVerificationRequest, db: Session = Depends(get_db)):
+    verify_turnstile(payload.turnstile_token)
     user = db.query(User).filter(User.email == payload.email).first()
     # Always return the same shape so we don't leak whether an email is registered.
     generic = {"message": "If that account exists and is unverified, a new link has been sent."}
@@ -169,6 +172,7 @@ def resend_verification(payload: ResendVerificationRequest, db: Session = Depend
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    verify_turnstile(payload.turnstile_token)
     try:
         user = db.query(User).filter(User.email == payload.email).first()
         if not user:
@@ -250,6 +254,7 @@ def password_reset(payload: PasswordResetRequest):
 
 @router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    verify_turnstile(payload.turnstile_token)
     generic = {"message": "If that account exists, a password reset link has been sent."}
     user = db.query(User).filter(User.email == payload.email).first()
     if not user or not user.email_verified:
@@ -268,6 +273,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 
 @router.post("/reset-password")
 def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    verify_turnstile(payload.turnstile_token)
     user = db.query(User).filter(User.password_reset_token == payload.token).first()
     if not user or not user.password_reset_sent_at:
         raise HTTPException(

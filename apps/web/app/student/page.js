@@ -20,6 +20,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import TurnstileWidget from "@/components/Turnstile";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -508,6 +509,8 @@ function ResumeTab({ onToast, reload, profile, onParsed, onGoToProfile }) {
   const inputRef = useRef(null);
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRef = useRef(null);
 
   const hasExtracted = status?.status === "completed" || (profile?.skills?.length > 0);
   const isParsing = status?.status === "pending" || status?.status === "processing";
@@ -542,7 +545,9 @@ function ResumeTab({ onToast, reload, profile, onParsed, onGoToProfile }) {
     if (!file) return;
     setBusy(true);
     try {
-      const res = await uploadFile("/students/me/resume", file);
+      const res = await uploadFile("/students/me/resume", file, {
+        fields: { cf_turnstile_response: captchaToken },
+      });
       setStatus(res);
       onToast("Got it. Reading your CV — 15 to 30 seconds.");
       await pollStatus(res.id);
@@ -551,6 +556,8 @@ function ResumeTab({ onToast, reload, profile, onParsed, onGoToProfile }) {
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = "";
+      setCaptchaToken(null);
+      captchaRef.current?.reset();
     }
   };
 
@@ -565,12 +572,23 @@ function ResumeTab({ onToast, reload, profile, onParsed, onGoToProfile }) {
       </CardHeader>
       <CardContent>
         <input ref={inputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={onPick} />
+        {!hasExtracted && (
+          <div className="mb-3">
+            <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <Button
             onClick={() => inputRef.current?.click()}
-            disabled={busy || hasExtracted}
+            disabled={busy || hasExtracted || !captchaToken}
             className="gap-2"
-            title={hasExtracted ? "Delete your profile to upload a new resume" : undefined}
+            title={
+              hasExtracted
+                ? "Delete your profile to upload a new resume"
+                : !captchaToken
+                  ? "Complete the verification check first"
+                  : undefined
+            }
           >
             <Upload size={16} />
             {busy ? "Processing..." : profile?.skills?.length ? "Upload a new resume" : "Choose file"}

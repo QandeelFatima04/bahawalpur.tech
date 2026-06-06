@@ -53,6 +53,7 @@ from ..services import email as email_service
 from ..services.ai import generate_job_description
 from ..services.matching import recompute_for_job
 from ..services.skills import clean_skill_input
+from ..services.turnstile import verify_turnstile
 
 router = APIRouter(prefix="/companies", tags=["companies"])
 
@@ -163,6 +164,7 @@ def generate_job_draft(
 ):
     """Return an AI-drafted job description. Does NOT persist a Job — the company still has to
     POST /companies/jobs to publish. Rate-limited per company via ai_generation_logs."""
+    verify_turnstile(payload.turnstile_token)
     company = _require_approved_company(db, user.id)
 
     now = datetime.utcnow()

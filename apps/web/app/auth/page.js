@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import TurnstileWidget from "@/components/Turnstile";
 import { ArrowLeft, MailCheck } from "lucide-react";
 
 function decodeRole(token) {
@@ -39,6 +40,13 @@ function AuthPageInner() {
   const [needsVerification, setNeedsVerification] = useState(null); // { email } | null
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState(null);
+  // Cloudflare Turnstile: single-use token, reset after each submit to fetch a fresh one.
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRef = useRef(null);
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    captchaRef.current?.reset();
+  };
 
   useEffect(() => {
     if (ready && isAuthenticated && userRole) {
@@ -77,6 +85,7 @@ function AuthPageInner() {
           role: form.role,
           company_name:
             form.role === "company" ? form.company_name || "Pending Company" : undefined,
+          turnstile_token: captchaToken,
         };
         await api("/auth/register", { method: "POST", body: JSON.stringify(payload) });
         // Backend does NOT issue tokens on register. User must verify email first.
@@ -84,7 +93,11 @@ function AuthPageInner() {
       } else {
         const data = await api("/auth/login", {
           method: "POST",
-          body: JSON.stringify({ email: form.email, password: form.password }),
+          body: JSON.stringify({
+            email: form.email,
+            password: form.password,
+            turnstile_token: captchaToken,
+          }),
         });
         login(data.access_token, data.refresh_token);
         const role = decodeRole(data.access_token) || "student";
@@ -101,6 +114,8 @@ function AuthPageInner() {
       }
     } finally {
       setBusy(false);
+      // Token is single-use — reset so a fresh one is fetched for the next attempt.
+      resetCaptcha();
     }
   };
 
@@ -110,13 +125,14 @@ function AuthPageInner() {
     try {
       await api("/auth/resend-verification", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstile_token: captchaToken }),
       });
       setResendMsg("If that account exists and is unverified, a fresh link has been sent.");
     } catch (err) {
       setResendMsg(err.message);
     } finally {
       setResending(false);
+      resetCaptcha();
     }
   };
 
@@ -147,10 +163,13 @@ function AuthPageInner() {
             <p className="mt-6 text-[13px] text-muted-foreground">
               Didn&apos;t get it? Check spam, or:
             </p>
+            <div className="mt-3 flex justify-center">
+              <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
+            </div>
             <Button
               variant="outline"
               className="mt-3"
-              disabled={resending}
+              disabled={resending || !captchaToken}
               onClick={() => resend(checkInbox.email)}
             >
               {resending ? "Sending…" : "Resend verification email"}
@@ -300,7 +319,7 @@ function AuthPageInner() {
                   size="sm"
                   className="mt-2"
                   type="button"
-                  disabled={resending}
+                  disabled={resending || !captchaToken}
                   onClick={() => resend(needsVerification.email)}
                 >
                   {resending ? "Sending…" : "Resend verification email"}
@@ -310,7 +329,8 @@ function AuthPageInner() {
                 )}
               </div>
             )}
-            <Button type="submit" disabled={busy} className="w-full" size="md">
+            <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
+            <Button type="submit" disabled={busy || !captchaToken} className="w-full" size="md">
               {busy ? "Please wait…" : isRegister ? "Create account" : "Log in"}
             </Button>
           </form>

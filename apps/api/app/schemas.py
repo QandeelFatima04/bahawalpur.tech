@@ -24,6 +24,7 @@ class VerifyEmailRequest(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
+    turnstile_token: str | None = None
 
 
 class RegisterRequest(BaseModel):
@@ -33,11 +34,13 @@ class RegisterRequest(BaseModel):
     # via a database seed or by another admin — never via this endpoint.
     role: Literal["student", "company"]
     company_name: str | None = None
+    turnstile_token: str | None = None
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    turnstile_token: str | None = None
 
 
 class RefreshRequest(BaseModel):
@@ -50,11 +53,17 @@ class PasswordResetRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    turnstile_token: str | None = None
 
 
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str = Field(min_length=8)
+    turnstile_token: str | None = None
+
+
+class CoachConversationCreate(BaseModel):
+    turnstile_token: str | None = None
 
 
 class ProjectIn(BaseModel):
@@ -162,6 +171,7 @@ class JobResponse(BaseModel):
 class JobDraftRequest(BaseModel):
     role_name: str = Field(min_length=2, max_length=100)
     seniority_hint: Literal["entry", "junior", "mid", "senior", "lead"] | None = None
+    turnstile_token: str | None = None
 
 
 class JobDraftResponse(BaseModel):

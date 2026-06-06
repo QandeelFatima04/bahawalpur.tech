@@ -1,11 +1,12 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import TurnstileWidget from "@/components/Turnstile";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 function ResetPasswordInner() {
@@ -17,6 +18,8 @@ function ResetPasswordInner() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRef = useRef(null);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -29,7 +32,7 @@ function ResetPasswordInner() {
     try {
       await api("/auth/reset-password", {
         method: "POST",
-        body: JSON.stringify({ token, new_password: form.password }),
+        body: JSON.stringify({ token, new_password: form.password, turnstile_token: captchaToken }),
       });
       setDone(true);
       // Redirect to login after a short delay.
@@ -38,6 +41,8 @@ function ResetPasswordInner() {
       setError(err.message);
     } finally {
       setBusy(false);
+      setCaptchaToken(null);
+      captchaRef.current?.reset();
     }
   };
 
@@ -130,7 +135,8 @@ function ResetPasswordInner() {
                     {error}
                   </p>
                 )}
-                <Button type="submit" disabled={busy} className="w-full" size="md">
+                <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
+                <Button type="submit" disabled={busy || !captchaToken} className="w-full" size="md">
                   {busy ? "Updating…" : "Update password"}
                 </Button>
               </form>

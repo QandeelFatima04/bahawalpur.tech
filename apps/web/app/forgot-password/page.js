@@ -1,10 +1,11 @@
 "use client";
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import TurnstileWidget from "@/components/Turnstile";
 import { ArrowLeft, MailCheck } from "lucide-react";
 
 function ForgotPasswordInner() {
@@ -12,6 +13,8 @@ function ForgotPasswordInner() {
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRef = useRef(null);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -20,13 +23,15 @@ function ForgotPasswordInner() {
     try {
       await api("/auth/forgot-password", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstile_token: captchaToken }),
       });
       setSent(true);
     } catch (err) {
       setError(err.message);
     } finally {
       setBusy(false);
+      setCaptchaToken(null);
+      captchaRef.current?.reset();
     }
   };
 
@@ -100,7 +105,8 @@ function ForgotPasswordInner() {
                     {error}
                   </p>
                 )}
-                <Button type="submit" disabled={busy} className="w-full" size="md">
+                <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
+                <Button type="submit" disabled={busy || !captchaToken} className="w-full" size="md">
                   {busy ? "Sending…" : "Send reset link"}
                 </Button>
               </form>

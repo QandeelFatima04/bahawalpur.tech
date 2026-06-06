@@ -17,6 +17,10 @@ RUN mkdir -p public && \
 #   docker build --build-arg NEXT_PUBLIC_API_BASE=https://api.example.com .
 ARG NEXT_PUBLIC_API_BASE=""
 ENV NEXT_PUBLIC_API_BASE=$NEXT_PUBLIC_API_BASE
+# Cloudflare Turnstile public site key (safe to ship to the browser). lib/turnstile.js
+# falls back to the real key if this arg is omitted.
+ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY="0x4AAAAAADfbT1w54Pdn0jql"
+ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 RUN npm run build
 EXPOSE 3000
 CMD ["npm", "run", "start"]

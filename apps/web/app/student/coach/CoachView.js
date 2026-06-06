@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { api } from "@/lib/api";
+import TurnstileWidget from "@/components/Turnstile";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "";
 const TOKEN_KEY = "cb_token";
@@ -217,6 +218,15 @@ export default function CoachView() {
   const currentAudioRef = useRef(null);
   const voiceModeRef = useRef(false);
   const conversationIdRef = useRef(null);
+  // Turnstile: required once to create the first conversation. Kept in a ref so
+  // ensureConversation (a []-dep callback) always reads the latest token.
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaTokenRef = useRef(null);
+  const captchaRef = useRef(null);
+  const onCaptcha = (t) => {
+    captchaTokenRef.current = t;
+    setCaptchaToken(t);
+  };
   // Keep a ref to vad so callbacks never have stale closures
   const vadRef = useRef(null);
 
@@ -255,9 +265,16 @@ export default function CoachView() {
   // ── ensure conversation ──
   const ensureConversation = useCallback(async () => {
     if (conversationIdRef.current) return conversationIdRef.current;
-    const { id } = await api("/students/me/coach/conversations", { method: "POST" });
+    const { id } = await api("/students/me/coach/conversations", {
+      method: "POST",
+      body: JSON.stringify({ turnstile_token: captchaTokenRef.current }),
+    });
     setConversationId(id);
     conversationIdRef.current = id;
+    // One-time check passed — token is single-use; reset so the widget unmounts cleanly.
+    captchaTokenRef.current = null;
+    setCaptchaToken(null);
+    captchaRef.current?.reset();
     return id;
   }, []);
 
@@ -597,6 +614,14 @@ export default function CoachView() {
 
       {/* Input bar */}
       <div className="border-t border-border bg-background px-4 py-3 sm:px-6">
+        {!conversationId && (
+          <div className="mb-3 flex flex-col items-center gap-1.5">
+            <p className="text-[12px] text-muted-foreground">
+              Quick check before we start your coaching session:
+            </p>
+            <TurnstileWidget ref={captchaRef} onToken={onCaptcha} />
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="flex items-end gap-2">
           <textarea
             className="input-base flex-1 resize-none"
@@ -623,8 +648,14 @@ export default function CoachView() {
           <button
             type="button"
             onClick={toggleVoiceMode}
-            disabled={!!vad?.errored}
-            title={voiceMode ? "Stop voice mode" : "Start voice mode"}
+            disabled={!!vad?.errored || (!conversationId && !captchaToken)}
+            title={
+              !conversationId && !captchaToken
+                ? "Complete the verification check first"
+                : voiceMode
+                  ? "Stop voice mode"
+                  : "Start voice mode"
+            }
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-colors ${
               voiceMode
                 ? "bg-blue-600 text-white hover:bg-blue-700"
@@ -637,7 +668,7 @@ export default function CoachView() {
           {/* Send */}
           <button
             type="submit"
-            disabled={!input.trim() || sending}
+            disabled={!input.trim() || sending || (!conversationId && !captchaToken)}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
           >
             <Send size={16} />

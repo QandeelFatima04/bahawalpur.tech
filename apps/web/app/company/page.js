@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { friendlyError } from "@/lib/friendlyError";
 import { useTabState } from "@/lib/useTabState";
@@ -9,6 +9,7 @@ import { DashboardSidebar } from "@/components/DashboardSidebar";
 import { LayoutDashboard, Briefcase, Users as UsersIcon, CalendarClock as CalendarClockIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import TurnstileWidget from "@/components/Turnstile";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -126,6 +127,8 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
   });
   const [roleDraft, setRoleDraft] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const captchaRef = useRef(null);
 
   // Compose a Markdown description from the AI draft so the Description textarea remains
   // human-editable. The structured fields stay in `extra` for filtering / future UI.
@@ -169,7 +172,7 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
     try {
       const draft = await api("/companies/jobs/generate", {
         method: "POST",
-        body: JSON.stringify({ role_name: role }),
+        body: JSON.stringify({ role_name: role, turnstile_token: captchaToken }),
       });
       setForm((f) => ({
         ...f,
@@ -204,6 +207,9 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
       onToast?.(friendlyError(err));
     } finally {
       setGenerating(false);
+      // Turnstile tokens are single-use — reset for the next generation.
+      setCaptchaToken(null);
+      captchaRef.current?.reset();
     }
   };
 
@@ -246,9 +252,16 @@ function JobForm({ initial, onSubmit, onCancel, onToast }) {
             maxLength={100}
             disabled={generating}
           />
-          <Button type="button" onClick={generate} disabled={generating || !roleDraft.trim()}>
+          <Button
+            type="button"
+            onClick={generate}
+            disabled={generating || !roleDraft.trim() || !captchaToken}
+          >
             {generating ? "Drafting…" : form.title ? "Regenerate" : "Generate"}
           </Button>
+        </div>
+        <div className="mt-3">
+          <TurnstileWidget ref={captchaRef} onToken={setCaptchaToken} />
         </div>
         {generating && (
           <div className="mt-3">
