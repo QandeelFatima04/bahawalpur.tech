@@ -6,6 +6,7 @@ careerbridge.db
 node_modules/
 .next/
 .env
+.env.*
 dist/
 apps/api/logs/
 apps/api/tests/*.db
